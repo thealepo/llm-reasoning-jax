@@ -8,13 +8,12 @@ class PolicyModel(nnx.Module):
         self.fc2 = nnx.Linear(hidden_size , output_size , rngs=rngs)
 
     def __call__(self , x):
-        x = self.fc1(x)
-        x = nnx.relu(x)
+        x = nnx.relu(self.fc1(x))
         logits = self.fc2(x)
 
-        probs = jax.nn.softmax(logits)
         action = jax.random.categorical(rngs.params() , logits)
 
         log_probs = jax.nn.log_softmax(logits)
+        log_probs_action = log_probs[jnp.arange(action.shape[0]) , action]
 
-        return
+        return action , log_probs_action
