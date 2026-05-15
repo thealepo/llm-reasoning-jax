@@ -17,10 +17,17 @@ model = PolicyModel(
 optimizer = nnx.Optimizer(model , optax.adam(1e-3) , wrt=nnx.Param)
 
 def loss_fn(model , episode_data , returns):
-    log_probs = jnp.array([data[2] for data in episode_data])
+    states = jnp.array([data[0] for data in episode_data])
+    actions = jnp.array([data[1] for data in episode_data])
     returns = jnp.array(returns)
-
     returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+
+    def get_log_prob(state , action):
+        logits = model.fc2(nnx.relu(model.fc1(state)))
+        log_probs = jax.nn.log_softmax(logits)
+        return log_probs[action]
+
+    log_probs = jax.vmap(get_log_prob)(states , actions)
     return -jnp.mean(log_probs * returns)
 
 for episode in range(10_000):
