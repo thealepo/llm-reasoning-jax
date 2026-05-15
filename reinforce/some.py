@@ -52,5 +52,6 @@ for episode in range(10_000):
         returns.append(G)
     returns = returns[::-1]
 
+    # Update weights of Policy model
     grads = nnx.grad(loss_fn)(model , episode_data , returns)
     optimizer.update(model , grads)
