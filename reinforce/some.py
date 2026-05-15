@@ -10,7 +10,7 @@ state , _ = env.reset()
 
 model = PolicyModel(
     input_size=state.shape[0],
-    hidden_size=8,
+    hidden_size=128,
     output_size=env.action_space.n,
     rngs=nnx.Rngs(42)
 )
@@ -20,6 +20,7 @@ def loss_fn(model , episode_data , returns):
     log_probs = jnp.array([data[2] for data in episode_data])
     returns = jnp.array(returns)
 
+    returns = (returns - returns.mean()) / (returns.std() + 1e-8)
     return -jnp.mean(log_probs * returns)
 
 for episode in range(10_000):
