@@ -5,6 +5,7 @@ import optax
 import gymnasium as gym
 from model import PolicyModel
 
+key = jax.random.PRNGKey(42)
 env = gym.make('CartPole-v1')
 state , _ = env.reset()
 
@@ -33,10 +34,10 @@ for episode in range(10_000):
     episode_data = []
     state , _ = env.reset()
     done = False
-    key = jax.random.PRNGKey(episode)
 
+    key, episode_key = jax.random.split(key)
     while not done:
-        key , subkey = jax.random.split(key)
+        episode_key , subkey = jax.random.split(episode_key)
 
         action , log_prob = model.sample(jnp.array(state) , subkey)
 
@@ -44,7 +45,7 @@ for episode in range(10_000):
 
         done = terminated or truncated
 
-        episode_data.append((state , action , log_prob , reward , next_state , done))
+        episode_data.append((state , action , reward))
 
         state = next_state
 
@@ -53,7 +54,7 @@ for episode in range(10_000):
     G = 0
     gamma = 0.99
 
-    for _ , _ , _ , reward , _ , _ in reversed(episode_data):
+    for _ , _ , reward in reversed(episode_data):
         G = reward + gamma * G
         returns.append(G)
     returns = returns[::-1]
