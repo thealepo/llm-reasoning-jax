@@ -26,7 +26,7 @@ def loss_fn(model , states , actions , returns):
 
 @nnx.jit
 def train_step(model , optimizer , states , actions , returns):
-    grads = nnx.grad(loss_fn)(model , states , actions , returns)
+    grads = nnx.grad(loss_fn , wrt=nnx.Param)(model , states , actions , returns)
     optimizer.update(model , grads)
 
 for episode in range(10_000):
