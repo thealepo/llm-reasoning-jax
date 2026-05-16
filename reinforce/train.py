@@ -16,19 +16,17 @@ model = PolicyModel(
 )
 optimizer = nnx.Optimizer(model , optax.adam(1e-3) , wrt=nnx.Param)
 
-def loss_fn(model , episode_data , returns):
-    states = jnp.array([data[0] for data in episode_data])
-    actions = jnp.array([data[1] for data in episode_data])
-    returns = jnp.array(returns)
+def loss_fn(model , states , actions , returns):
     returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+    logits = jax.vmap(model)(states)
+    log_probs = jax.nn.log_softmax(logits)
+    action_log_prob = log_probs[jnp.arange(actions.shape[0]) , actions]
+    return -jnp.mean(action_log_prob * returns)
 
-    def get_log_prob(state , action):
-        logits = model.fc2(nnx.relu(model.fc1(state)))
-        log_probs = jax.nn.log_softmax(logits)
-        return log_probs[action]
-
-    log_probs = jax.vmap(get_log_prob)(states , actions)
-    return -jnp.mean(log_probs * returns)
+@nnx.jit
+def train_step(model , optimizer , states , actions , returns):
+    grads = nnx.grad(loss_fn)(model , states , actions , returns)
+    optimizer.update(model , grads)
 
 for episode in range(10_000):
     # Generate one episode
@@ -40,7 +38,7 @@ for episode in range(10_000):
     while not done:
         key , subkey = jax.random.split(key)
 
-        action , log_prob = model(jnp.array(state) , subkey)
+        action , log_prob = model.sample(jnp.array(state) , subkey)
 
         next_state , reward , terminated , truncated , info = env.step(int(action))
 
@@ -60,6 +58,9 @@ for episode in range(10_000):
         returns.append(G)
     returns = returns[::-1]
 
+    states = jnp.stack([jnp.array(data[0]) for data in episode_data])
+    actions = jnp.array([data[1] for data in episode_data])
+    returns = jnp.array(returns)
+
     # Update weights of Policy model
-    grads = nnx.grad(loss_fn)(model , episode_data , returns)
-    optimizer.update(model , grads)
+    train_step(model , optimizer , states , actions , returns)
