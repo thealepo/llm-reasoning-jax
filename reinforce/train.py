@@ -9,16 +9,18 @@ from model import PolicyModel
 NUM_EPISODES = 1_000
 GAMMA = 0.99
 LEARNING_RATE = 1e-3
+HIDDEN_SIZE = 128
+ENVIRONMENT = 'CartPole-v1'
 
 # Setting the JAX keys and Environment (CartPole-v1 for this Implementation)
 key = jax.random.PRNGKey(42)
-env = gym.make('CartPole-v1')
+env = gym.make(ENVIRONMENT)
 state , _ = env.reset()
 
 # Initializing the custom policy model, and optimizer
 model = PolicyModel(
     input_size=state.shape[0],
-    hidden_size=128,
+    hidden_size=HIDDEN_SIZE,
     output_size=env.action_space.n,
     rngs=nnx.Rngs(42)
 )
