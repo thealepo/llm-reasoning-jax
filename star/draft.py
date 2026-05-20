@@ -15,8 +15,9 @@ for i in range(N):
     for i in range(len(ra_pairs)):
         question , rationale , pred , answer , correct = ra_pair[i]
         if not correct:
-            new_rationale = model_n.rationalize(question , answer)
-            rationalized.append((question , new_rationale , answer))
+            new_rationale , new_pred = model_n.rationalize(question , answer)
+            if new_pred == answer:
+                rationalized.append((question , new_rationale , answer))
         else:
             rationalized.append((question , rationale , answer))
 
