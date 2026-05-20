@@ -22,4 +22,4 @@ for i in range(N):
             rationalized.append((question , rationale , answer))
 
     # finetune original model on correct solutions
-    current_model = tune(model , rationalized_ra_pairs)
+    current_model = finetune(model , rationalized_ra_pairs)
