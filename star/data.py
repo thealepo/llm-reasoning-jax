@@ -1,0 +1,41 @@
+import re
+from datasets import load_dataset
+
+def load_gsm8k(split):
+    dataset = load_dataset('openai/gsm8k' , 'main' , split=split)
+    
+    examples = []
+    for row in dataset:
+        question = row['question'].strip()
+        answer_text = row['answer'].strip()
+
+        gold_reasoning , gold_answer = parse_answer_string(answer_text)
+        
+        examples.append(
+            question,
+            gold_answer,
+            gold_reasoning
+        )
+
+
+def parse_answer_string(answer_text):
+    parts = answer_text.split('####')
+
+    reasoning , raw_answer = parts[0].strip() , parts[1].strip()
+    answer = normalize_answer(raw_answer)
+    return reasoning , answer
+
+def normalize_answer(raw_answer):
+    raw_answer = raw_answer.strip()
+    raw_answer = raw_answer.replace(',' , '')
+    raw_answer = raw_answer.replace('$' , '')
+    raw_answer = raw_answer.strip()
+
+    try:
+        as_float = float(raw_answer)
+        if as_float == int(as_float):
+            return str(int(as_float))
+        else:
+            return str(as_float)
+    except ValueError:
+        return raw_answer
