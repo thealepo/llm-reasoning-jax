@@ -2,11 +2,6 @@ import re
 from datasets import load_dataset
 from typing import NamedTuple
 
-class GSM8KExample(NamedTuple):
-    question: str
-    gold_answer: str
-    gold_reasoning: str
-
 def load_gsm8k(split):
     dataset = load_dataset('openai/gsm8k' , 'main' , split=split)
     
@@ -17,13 +12,7 @@ def load_gsm8k(split):
 
         gold_reasoning , gold_answer = parse_answer_string(answer_text)
         
-        examples.append(
-            GSM8KExample(
-                question=question,
-                gold_answer=gold_answer,
-                gold_reasoning=gold_reasoning
-            )
-        )
+        examples.append((question , gold_answer , gold_reasoning))
 
         return examples
 
