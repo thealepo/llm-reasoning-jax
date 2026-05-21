@@ -14,7 +14,7 @@ def load_gsm8k(split):
         
         examples.append((question , gold_answer , gold_reasoning))
 
-        return examples
+    return examples
 
 
 def parse_answer_string(answer_text):
