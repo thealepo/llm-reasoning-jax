@@ -15,3 +15,5 @@ def evaluate(model , params , tokenizer , test_examples , max_new_tokens=256):
             correct += 1
 
     return correct / len(test_examples)
+
+def run_ablations()
