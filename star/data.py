@@ -1,6 +1,5 @@
 import re
 from datasets import load_dataset
-from typing import NamedTuple
 
 def load_gsm8k(split):
     dataset = load_dataset('openai/gsm8k' , 'main' , split=split)

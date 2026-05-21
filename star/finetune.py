@@ -27,7 +27,7 @@ def finetune(model , params , examples , tokenizer , workdir , num_steps=300 , b
 
     # Building the new dataset for Kauldron finetuning
     ds = kd.data.py.HuggingFace(
-        dataset='''some data''',
+        dataset=hf_ds,
         batch_size=batch_size,
         transforms=[
             gm.data.Seq2SeqTask(
