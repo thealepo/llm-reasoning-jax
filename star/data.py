@@ -46,8 +46,3 @@ if __name__ == '__main__':
 
     print(len(train))
     print(len(test))
-
-    ex = train[2]
-    print(ex.question)
-    print(ex.gold_reasoning)
-    print(ex.gold_answer)
