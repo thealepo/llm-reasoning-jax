@@ -12,7 +12,7 @@ def load_model(checkpoint=CHECKPOINT):
     return model , tokenizer , params
 
 def copy_params(params):
-    return jax.tree.map(lambda x: x , params)
+    return jax.tree.map(lambda x: jnp.array(x) , params)
 
 def make_sampler(model , params , tokenizer):
     sampler = gm.text.Sampler(

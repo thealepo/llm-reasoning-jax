@@ -16,4 +16,11 @@ def evaluate(model , params , tokenizer , test_examples , max_new_tokens=256):
 
     return correct / len(test_examples)
 
-def run_ablations()
+def run_ablations(model , tokenizer , base_params , no_rat_params , rat_params , test_examples):
+    results = {}
+
+    results['base'] = evaluate(model , base_params , tokenizer , test_examples)
+    results['star_no_rationalization'] = evaluate(model , no_rat_params , tokenizer , test_examples)
+    results['star_rationalization'] = evaluate(model , rat_params , tokenizer , test_examples)
+
+    return results
