@@ -1,4 +1,4 @@
-from data import load_gsm8k , normalize_answer
+from data import load_gsm8k , normalize_answer , parse_answer_string
 from model import load_model , make_sampler , generate
 from prompts import standard_prompt
 
@@ -10,8 +10,10 @@ def evaluate(model , params , tokenizer , test_examples , max_new_tokens=256):
         prompt = standard_prompt(question)
         output = generate(sampler , prompt , max_new_tokens=max_new_tokens)
         
-        raw_predicted = output.split('####')[-1].strip() if '####' in output else output.strip()
-        predicted = normalize_answer(raw_predicted)
+        try:
+            _ , predicted = parse_answer_string(output)
+        except (IndexError , ValueError):
+            predicted = normalize_answer(output.strip())
 
         if predicted == answer:
             correct += 1

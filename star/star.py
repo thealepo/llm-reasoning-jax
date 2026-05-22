@@ -4,10 +4,9 @@ from prompts import standard_prompt , rationalization_prompt
 from finetune import finetune
 from eval import evaluate
 
-def main(num_iterations=3 , max_new_tokens=256 , use_rationalization=True , workdir='./star_output'):
-    train_dataset , test_dataset = load_gsm8k('train') , load_gsm8k('test')
+def main(model , tokenizer , params , test_dataset , num_iterations=3 , max_new_tokens=256 , use_rationalization=True , workdir='./star_output'):
+    train_dataset = load_gsm8k('train')
 
-    model , tokenizer , params = load_model()
     sampler = make_sampler(model , params , tokenizer)
 
     for i in range(num_iterations):
@@ -30,7 +29,10 @@ def main(num_iterations=3 , max_new_tokens=256 , use_rationalization=True , work
                     prompt = rationalization_prompt(question , answer)
                     output = generate(sampler , prompt , max_new_tokens=max_new_tokens)
 
-                    rat_reasoning , _ = parse_answer_string(output)
+                    try:
+                        rat_reasoning , _ = parse_answer_string(output)
+                    except (IndexError , ValueError):
+                        continue
                     
                     examples.append((question , answer , rat_reasoning))
 

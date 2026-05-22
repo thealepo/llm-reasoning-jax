@@ -8,8 +8,8 @@ if __name__ == '__main__':
     test_dataset = load_gsm8k('test')
     model , tokenizer , base_params = load_model()
 
-    no_rat_params = main(use_rationalization=False , workdir='./output/no_rationalization')
-    rat_params = main(use_rationalization=True , workdir='./output/rationalization')
+    no_rat_params = main(model , tokenizer , base_params , test_dataset , use_rationalization=False , workdir='./output/no_rationalization')
+    rat_params = main(model , tokenizer , base_params , test_dataset , use_rationalization=True , workdir='./output/rationalization')
 
     results = run_ablations(model , tokenizer , base_params , no_rat_params , rat_params , test_dataset)
 

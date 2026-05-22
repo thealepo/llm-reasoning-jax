@@ -1,20 +1,17 @@
 import os
+import json
 import optax
 from gemma import gm
 from kauldron import kd
-from datasets import Dataset
 
-def examples_to_hf_dataset(examples):
-    records = {
-        'prompt': [],
-        'response': []
-    }
-
-    for question , answer , reasoning in examples:
-        records['prompt'].append(question)
-        records['response'].append(f'{reasoning}\n#### {answer}')
-
-    return Dataset.from_dict(records) 
+def examples_to_jsonl(examples, path):
+    with open(path , 'w') as f:
+        for question , answer , reasoning in examples:
+            record = {
+                'prompt': question,
+                'response': f'{reasoning}\n#### {answer}'
+            }
+            f.write(json.dumps(record) + '\n')
 
 def finetune(model , params , examples , tokenizer , workdir , num_steps=300 , batch_size=8 , lr=1e-3):
     os.makedirs(workdir , exist_ok=True)
@@ -22,12 +19,16 @@ def finetune(model , params , examples , tokenizer , workdir , num_steps=300 , b
     ckpt_dir = os.path.join(workdir , 'init_ckpt')
     gm.ckpts.save_params(params , ckpt_dir)
 
-    hf_ds = examples_to_hf_dataset(examples)
+    data_dir = os.path.join(workdir , 'data')
+    os.makedirs(data_dir , exist_ok=True)
+    examples_to_jsonl(examples , os.path.join(data_dir, 'train.jsonl'))
 
-    # Building the new dataset for Kauldron finetuning
     ds = kd.data.py.HuggingFace(
-        dataset=hf_ds,
+        path='json',
+        split='train',
+        data_dir=data_dir,
         batch_size=batch_size,
+        shuffle=False,
         transforms=[
             gm.data.Seq2SeqTask(
                 in_prompt='prompt',
