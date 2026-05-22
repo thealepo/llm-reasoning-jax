@@ -14,7 +14,7 @@ Working 50 minutes, she earned 0.2 x 50 = $<<0.2*50=10>>10.
 #### 10
 '''
 
-def prompt(question):
+def standard_prompt(question):
     prompt = f'Q:{question}\nA: '
     return SYSTEM_PROMPT + FEW_SHOT_EXAMPLES + prompt
 

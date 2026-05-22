@@ -1,15 +1,17 @@
 from data import load_gsm8k , normalize_answer
 from model import load_model , make_sampler , generate
-# make a prompts.py
+from prompts import standard_prompt
 
 def evaluate(model , params , tokenizer , test_examples , max_new_tokens=256):
     sampler = make_sampler(model , params , tokenizer)
     correct = 0
 
     for i , (question , answer , reasoning) in enumerate(test_examples):
-        # prompt = some prompt-making func
+        prompt = standard_prompt(question)
         output = generate(sampler , prompt , max_new_tokens=max_new_tokens)
-        # predicted = 
+        
+        raw_predicted = output.split('####')[-1].strip() if '####' in output else output.strip()
+        predicted = normalize_answer(raw_predicted)
 
         if predicted == answer:
             correct += 1
