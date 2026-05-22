@@ -2,7 +2,7 @@ from data import load_gsm8k , normalize_answer , parse_answer_string
 from model import load_model , make_sampler , generate
 from prompts import standard_prompt , rationalization_prompt
 from finetune import finetune
-
+from eval import evaluate
 
 def main(num_iterations=3 , max_new_tokens=256 , use_rationalization=True , workdir='./star_output'):
     train_dataset , test_dataset = load_gsm8k('train') , load_gsm8k('test')
@@ -18,8 +18,10 @@ def main(num_iterations=3 , max_new_tokens=256 , use_rationalization=True , work
             prompt = standard_prompt(question)
             output = generate(sampler , prompt , max_new_tokens=max_new_tokens)
 
-            pred_reasoning , raw_pred_answer = parse_answer_string(output)
-            pred_answer = normalize_answer(raw_pred_answer)
+            try:
+                pred_reasoning , pred_answer = parse_answer_string(output)
+            except (IndexError , ValueError):
+                continue
             
             if pred_answer == answer:
                 examples.append((question , answer , pred_reasoning))

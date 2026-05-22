@@ -1,4 +1,3 @@
-import re
 from datasets import load_dataset
 
 def load_gsm8k(split):
