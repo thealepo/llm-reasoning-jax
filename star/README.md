@@ -2,6 +2,8 @@
 
 This is a clean JAX/Gemma implementation of [STaR: Bootstrapping Reasoning with Reasoning](https://arxiv.org/abs/2203.14465) (Zelikman et al., 2022), evaluated on the GSM8K grade-school math benchmark (WIP).
 
+![Alt Text](https://github.com/user-attachments/assets/4e1ac422-f25f-4901-ae48-db066ef7120a)
+
 ## What is STaR?
 
 STaR is a supervised finetuning training technique that utilizes a model's own thinking to further and advance its reasoning capabilities. The core algorithm consists of:
