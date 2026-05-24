@@ -27,7 +27,7 @@ To me, the most important insight of this work is **rationalization**. So, rathe
 
 ## Usage of Implementation
 
-```
+```python
 from model import load_model
 from data import load_gsm8k
 from main import main
@@ -43,7 +43,7 @@ accuracy = main(
   num_iterations=3,
   use_rationalization=True
 )
-print(f"Test accuracy: {accuracy:.2%")
+print(f"Test accuracy: {accuracy:.2%}")
 ```
 
 ---
