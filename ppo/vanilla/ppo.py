@@ -36,8 +36,8 @@ def actor_loss_fn(actor , obs , actions , old_log_probs , advantages):
     ratio = jnp.exp(action_log_probs - jax.lax.stop_gradient(old_log_probs))
 
     # Calculating Surrogates
-    cpi = ratio * advantages
-    clipped = jnp.clip(ratio , 1 - EPSILON , 1 + EPSILON) * advantages
+    cpi = ratio * jax.lax.stop_gradient(advantages)
+    clipped = jnp.clip(ratio , 1 - EPSILON , 1 + EPSILON) * jax.lax.stop_gradient(advantages)
 
     # Policy Loss
     return -jnp.mean(jnp.minimum(cpi , clipped))
