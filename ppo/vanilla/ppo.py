@@ -48,7 +48,25 @@ def critic_loss_fn(critic , obs , returns):
     return jnp.mean((values - jax.lax.stop_gradient(returns)) ** 2)
 
 def compute_gae(rewards , values , dones):
-    pass
+    # Delta (TD error). How much better or worse than expected
+    next_values = jnp.append(values[1:] , next_value)
+    deltas = rewards + GAMMA * next_values * (1 - dones) - values
+
+    def scan_fn(last_advantage , delta_and_done):
+        delta , done = delta_and_done
+        advantage = delta + GAMMA * LAMBDA * (1 - done) * last_advantage
+        return advantage , advantage
+
+    # Reverse scan
+    _ , advantages = jax.lax.scan(
+        scan_fn,
+        jnp.float32(0.0),
+        (deltas , dones),
+        reverse=True
+    )
+
+    returns = advantages + values
+    return advantages , returns
 
 def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
     pass
