@@ -134,4 +134,15 @@ def train(rngs):
             carry = (state_actor , state_critic , state_opt_a , state_opt_c , rng)
             return carry , episode_reward
 
-        
+        init_carry = (state_actor , state_critic , state_opt_a , state_opt_c , rng)
+        final_carry , episode_rewards = jax.lax.scan(scan_body , init_carry , None , length=NUM_EPISODES)
+        return final_carry , episode_rewards
+
+    # The return for a whole training loop
+    return train_all_episodes(
+        state_actor,
+        state_critic,
+        state_opt_a,
+        state_opt_c,
+        rng
+    )
