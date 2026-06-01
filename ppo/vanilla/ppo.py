@@ -12,6 +12,10 @@ OBSERVATION_SIZE = 4
 ACTION_SIZE = 2
 HIDDEN = 128
 GAMMA = 0.99
+EPSILON = 0.2
+LAMBDA = ...
+K_EPOCHS = 4
+N_STEPS = 128
 LEARNING_RATE = 3e-4
 NUM_EPISODES = 1_000
 MAX_STEPS = 500
@@ -28,16 +32,18 @@ def actor_loss_fn(actor , obs , action , advantage):
 def critic_loss_fn(critic , obs , target):
     return (critic(obs) - jax.lax.stop_gradient(target)) ** 2
 
-def train(rngs):
-    # Initializing models and optimizers
-    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=nnx.Rngs(0))
-    critic = CriticModel(OBSERVATION_SIZE , HIDDEN , rngs=nnx.Rngs(1))
+def compute_gae(rewards , values , dones):
+    pass
 
-    optimizer_actor = nnx.Optimizer(actor , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
-    optimizer_critic = nnx.Optimizer(critic , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
+def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
+    pass
 
-    # Splitting into the states
-    graphdef_actor , state_actor = nnx.split(actor)
-    graphdef_critic , state_critic = nnx.split(critic)
-    graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
-    graphdef_opt_c , state_opt_c = nnx.split(optimizer_critic)
+def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
+    pass
+
+def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
+    pass
+
+@jax.jit
+def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , rng):
+    pass
