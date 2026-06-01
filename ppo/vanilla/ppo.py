@@ -18,7 +18,7 @@ K_EPOCHS = 4
 N_STEPS = 128
 LEARNING_RATE = 3e-4
 NUM_EPISODES = 1_000
-MAX_STEPS = 500
+# MAX_STEPS = 500
 ENVIRONMENT = 'CartPole-v1'
 
 # Environment stuff
