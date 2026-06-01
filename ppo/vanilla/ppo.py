@@ -126,7 +126,22 @@ def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
     )
 
 def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
-    pass
+    # Update the weights and all for the actor and critic
+
+    # Merging the splits
+    actor = nnx.merge(graphdef_actor , state_actor)
+    critic = nnx.merge(graphdef_critic , state_critic)
+    optimizer_actor = nnx.merge(graphdef_opt_a , state_opt_a)
+    optimizer_critic = nnx.merge(graphdef_opt_c , state_opt_c)
+
+    # Losses and Gradient Updates
+    a_loss , a_grads = nnx.value_and_grad(actor_loss_fn)(actor , obs , actions , advantages)
+    optimizer_actor.update(actor , a_grads)
+
+    c_loss , c_grads = nnx.value_and_grad(critic_loss_fn)(critic , obs , returns)
+    optimizer_critic.update(critic , c_grads)
+
+    return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss , c_loss)
 
 def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
     pass
