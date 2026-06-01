@@ -25,12 +25,27 @@ ENVIRONMENT = 'CartPole-v1'
 env , env_params = gymnax.make(ENVIRONMENT)
 
 # Loss Functions
-def actor_loss_fn(actor , obs , action , advantage):
-    log_probs = jax.nn.log_softmax(actor(obs))
-    return -log_probs[action] * jax.lax.stop_gradient(advantage)
+def actor_loss_fn(actor , obs , actions , old_log_probs , advantages):
+    # jax.vamp(function , in_axes , out_axes)
+    logits = jax.vmap(actor)(obs)
+    log_probs = jax.nn.log_softmax(logits)
+    action_log_probs = log_probs[jnp.arange(len(actions)) , actions]
 
-def critic_loss_fn(critic , obs , target):
-    return (critic(obs) - jax.lax.stop_gradient(target)) ** 2
+    # Calculating the ratio from TRPO & PPO
+    # (Policy's log probabilites / Policy's old log probabilities)
+    ratio = jnp.exp(action_log_probs - jax.lax.stop_gradient(old_log_probs))
+
+    # Calculating Surrogates
+    cpi = ratio * advantages
+    clipped = jnp.clip(ratio , 1 - EPSILON , 1 + EPSILON) * advantages
+
+    # Policy Loss
+    return -jnp.mean(jnp.minimum(cpi , clipped))
+
+
+def critic_loss_fn(critic , obs , returns):
+    values = jax.vmap(critic)(obs)  # obs is now (N_STEPS , 4) instead of (4,)
+    return jnp.mean((values - jax.lax.stop_gradient(returns)) ** 2)
 
 def compute_gae(rewards , values , dones):
     pass
