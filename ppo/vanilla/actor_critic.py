@@ -41,8 +41,28 @@ def train(rngs):
     graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
     graphdef_opt_c , state_opt_c = nnx.split(optimizer_critic)
 
-    def train_step():
-        pass
+    def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , action , reward , new_obs , done):
+        # Merging the splits
+        actor = nnx.merge(graphdef_actor , state_actor)
+        critic = nnx.merge(graphdef_critic , state_critic)
+        optimizer_actor = nnx.merge(graphdef_opt_a , state_opt_a)
+        optimizer_critic = nnx.merge(graphdef_opt_c , state_opt_c)
+
+        # Calculating the advantage
+        value = critic(obs)
+        next_value = critic(new_obs)
+        target = reward + GAMMA * next_value * (1.0 - done)
+        advantage = target - value
+
+        # Losses and Gradients
+        a_loss , a_grads = nnx.value_and_grad(actor_loss_fn)(actor , obs , action , advantage)
+        optimizer_actor.update(actor , a_grads)
+
+        c_loss , c_grads = nnx.value_and_grad(critic_loss_fn)(critic , obs , target)
+        optimizer_critic.update(critic , c_grads)
+
+        # Return
+        return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss , c_loss)
 
     def run_episode():
         
