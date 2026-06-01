@@ -22,7 +22,8 @@ env , env_params = gymnax.make(ENVIRONMENT)
 
 # Loss Funcitons
 def actor_loss_fn(actor , obs , action , advantage):
-    ...
+    log_probs = jax.nn.log_softmax(actor(obs))
+    return -log_probs[action] * jax.lax.stop_gradient(advantage)
 
 def critic_loss_fn(critic , obs , target):
     return (critic(obs) - jax.lax.stop_gradient(target)) ** 2
