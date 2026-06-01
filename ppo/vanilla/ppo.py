@@ -13,7 +13,7 @@ ACTION_SIZE = 2
 HIDDEN = 128
 GAMMA = 0.99
 EPSILON = 0.2
-LAMBDA = ...
+LAMBDA = 0.95
 K_EPOCHS = 4
 N_STEPS = 128
 LEARNING_RATE = 3e-4
@@ -135,7 +135,7 @@ def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , ac
     optimizer_critic = nnx.merge(graphdef_opt_c , state_opt_c)
 
     # Losses and Gradient Updates
-    a_loss , a_grads = nnx.value_and_grad(actor_loss_fn)(actor , obs , actions , advantages)
+    a_loss , a_grads = nnx.value_and_grad(actor_loss_fn)(actor , obs , actions , old_log_probs , advantages)
     optimizer_actor.update(actor , a_grads)
 
     c_loss , c_grads = nnx.value_and_grad(critic_loss_fn)(critic , obs , returns)
@@ -145,7 +145,7 @@ def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , ac
 
 def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
 
-    def body_fn(carry , i):
+    def body_fn(i , carry):
         state_actor , state_critic , state_opt_a , state_opt_c = carry
 
         # Take a training step
@@ -204,6 +204,6 @@ def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , 
     )
 
     final_carry , episode_rewards = jax.lax.scan(
-        scan_fn , init_carry , None , lenght=NUM_EPISODES
+        scan_fn , init_carry , None , length=NUM_EPISODES
     )
     return final_carry , episode_rewards
