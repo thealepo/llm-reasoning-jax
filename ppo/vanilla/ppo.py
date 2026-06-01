@@ -171,4 +171,39 @@ def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , a
 
 @jax.jit
 def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , rng):
-    pass
+    
+    def scan_fn(carry , _):
+        state_actor , state_critic , state_opt_a , state_opt_c , obs , env_state , rng = carry
+
+        # Rollout (collect data)
+        (obs_batch , actions , rewards , dones , old_log_probs , values , advantages , returns , next_obs , next_env_state , rng) = rollout(
+            state_actor , state_critic , obs , env_state , rng
+        )
+
+        # Update the weights per epoch
+        state_actor , state_critic , state_opt_a , state_opt_c = train_epoch(
+            state_actor , state_critic , state_opt_a , state_opt_c , obs_batch , actions , old_log_probs , advantages , returns
+        )
+
+        # Carry
+        carry = (state_actor , state_critic , state_opt_a , state_opt_c , next_obs , next_env_state , rng)
+        return carry , rewards.sum()
+
+    # Initiale environment reset
+    rng , rng_reset = jax.random.split(rng)
+    init_obs , init_env_state = env.reset(rng_reset , env_params)
+
+    init_carry = (
+        state_actor,
+        state_critic,
+        state_opt_a,
+        state_opt_c,
+        init_obs,
+        init_env_state,
+        rng
+    )
+
+    final_carry , episode_rewards = jax.lax.scan(
+        scan_fn , init_carry , None , lenght=NUM_EPISODES
+    )
+    return final_carry , episode_rewards
