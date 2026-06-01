@@ -144,7 +144,30 @@ def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , ac
     return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss , c_loss)
 
 def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
-    pass
+
+    def body_fn(carry , i):
+        state_actor , state_critic , state_opt_a , state_opt_c = carry
+
+        # Take a training step
+        state_actor , state_critic , state_opt_a , state_opt_c , a_loss , c_loss = train_step(
+            state_actor,
+            state_critic,
+            state_opt_a,
+            state_opt_c,
+            obs,
+            actions,
+            old_log_probs,
+            advantages,
+            returns
+        )
+
+        return (state_actor , state_critic , state_opt_a , state_opt_c)
+
+    init_carry = (state_actor , state_critic , state_opt_a , state_opt_c)
+    final_carry = jax.lax.fori_loop(0 , K_EPOCHS , body_fn , init_carry)
+
+    return final_carry
+
 
 @jax.jit
 def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , rng):
