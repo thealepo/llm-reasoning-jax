@@ -134,14 +134,22 @@ def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , ac
     optimizer_actor = nnx.merge(graphdef_opt_a , state_opt_a)
     optimizer_critic = nnx.merge(graphdef_opt_c , state_opt_c)
 
-    # Losses and Gradient Updates
-    a_loss , a_grads = nnx.value_and_grad(actor_loss_fn)(actor , obs , actions , old_log_probs , advantages)
-    optimizer_actor.update(actor , a_grads)
+    # Trace-level loss function correction
+    def a_loss(params):
+        a = nnx.merge(graphdef_actor , params)
+        return actor_loss_fn(a , obs , actions , old_log_probs , advantages)
+    def c_loss(params):
+        c = nnx.merge(graphdef_critic , params)
+        return critic_loss_fn(c , obs , returns)
 
-    c_loss , c_grads = nnx.value_and_grad(critic_loss_fn)(critic , obs , returns)
-    optimizer_critic.update(critic , c_grads)
+    # Gathering losses, grads, and updating weights
+    a_loss_val , a_grads = jax.value_and_grad(a_loss)(nnx.state(actor))
+    c_loss_val , c_grads = jax.value_and_grad(c_loss)(nnx.state(critic))
+    optimizer_a.update(actor, a_grads)
+    optimizer_c.update(critic, c_grads)
 
-    return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss , c_loss)
+    return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , actor_loss_val , critic_loss_fn)
+
 
 def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
 
