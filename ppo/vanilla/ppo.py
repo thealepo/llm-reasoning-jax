@@ -47,7 +47,7 @@ def critic_loss_fn(critic , obs , returns):
     values = jax.vmap(critic)(obs)  # obs is now (N_STEPS , 4) instead of (4,)
     return jnp.mean((values - jax.lax.stop_gradient(returns)) ** 2)
 
-def compute_gae(rewards , values , dones):
+def compute_gae(rewards , values , dones , next_value):
     # Delta (TD error). How much better or worse than expected
     next_values = jnp.append(values[1:] , next_value)
     deltas = rewards + GAMMA * next_values * (1 - dones) - values
@@ -69,7 +69,61 @@ def compute_gae(rewards , values , dones):
     return advantages , returns
 
 def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
-    pass
+
+    def body_fn(carry , _):
+        obs , env_state , rng = carry
+        rng , rng_action , rng_step = jax.random.split(rng , 3)
+
+        # Sampling Actor
+        actor = nnx.merge(graphdef_actor , state_actor)
+        action , log_prob = actor.sample(obs , rng_action)
+
+        # Value estimate from the Critic
+        critic = nnx.merge(graphdef_critic , state_critic)
+        value = critic(obs)
+
+        # Environment step
+        new_obs , new_env_state , reward , done , _ = env.step(
+            rng_step , env_state , action , env_params
+        )
+
+        carry = (new_obs , new_env_state , rng)
+        memory = (obs , action , reward , done , log_prob , value)
+        return carry , memory
+
+    # Initial carry
+    init_carry = (init_obs , init_env_state , rng)
+
+    # Full rollout + Memoruy and FInal carry
+    final_carry , memory = jax.lax.scan(
+        body_fn,
+        init_carry,
+        None,
+        length=N_STEPS
+    )
+    final_obs , final_env_state , rng = final_carry
+    obs , actions , rewards , dones , old_log_probs , values = memory
+
+    # Value of the final state
+    critic = nnx.merge(graphdef_critic , state_critic)
+    next_value = critic(final_obs)
+
+    # The advantages
+    advantages , returns = compute_gae(rewards , values , dones , next_value)
+
+    return (
+        obs,
+        actions,
+        rewards,
+        dones,
+        old_log_probs,
+        values,
+        advantages,
+        returns,
+        final_obs,
+        final_env_state,
+        rng
+    )
 
 def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
     pass
