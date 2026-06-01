@@ -20,10 +20,24 @@ ENVIRONMENT = 'CartPole-v1'
 # Environment stuff
 env , env_params = gymnax.make(ENVIRONMENT)
 
-# Loss Funcitons
+# Loss Functions
 def actor_loss_fn(actor , obs , action , advantage):
     log_probs = jax.nn.log_softmax(actor(obs))
     return -log_probs[action] * jax.lax.stop_gradient(advantage)
 
 def critic_loss_fn(critic , obs , target):
     return (critic(obs) - jax.lax.stop_gradient(target)) ** 2
+
+def train(rngs):
+    # Initializing models and optimizers
+    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=nnx.Rngs(0))
+    critic = CriticModel(OBSERVATION_SIZE , HIDDEN , rngs=nnx.Rngs(1))
+
+    optimizer_actor = nnx.Optimizer(actor , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
+    optimizer_critic = nnx.Optimizer(critic , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
+
+    # Splitting into the states
+    graphdef_actor , state_actor = nnx.split(actor)
+    graphdef_critic , state_critic = nnx.split(critic)
+    graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
+    graphdef_opt_c , state_opt_c = nnx.split(optimizer_critic)
