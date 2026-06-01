@@ -113,9 +113,25 @@ def train(rngs):
         # Run the loop (a full episode)
         final_carry , rewards = jax.lax.scan(body_fn , init_carry , None , length=MAX_STEPS)
 
+        state_actor , state_critic , state_opt_a , state_opt_c , _ , _ , rng , _ = final_carry
+        return (state_actor , state_critic , state_opt_a , state_opt_c , rewards.sum() , rng)
 
     @jax.jit
-    def train_all_episodes():
+    def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , rng):
         
         def scan_body(carry , _):
-            pass
+            state_actor , state_critic , state_opt_a , state_opt_c , rng = carry
+            rng , rng_reset , rng_episode = jax.random.split(rng , 3)
+
+            # Resetting environment
+            init_obs , init_env_state = env.reset(key_reset , env_params)
+
+            # Running a singular episode
+            (state_actor , state_critic , state_opt_a , state_opt_c , episode_reward , rng) = run_episode(
+                state_actor , state_critic , state_opt_a , state_opt_c , init_obs , init_env_state , rng_episode
+            )
+
+            carry = (state_actor , state_critic , state_opt_a , state_opt_c , rng)
+            return carry , episode_reward
+
+        
