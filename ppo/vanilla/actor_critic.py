@@ -14,6 +14,7 @@ HIDDEN = 128
 GAMMA = 0.99
 LEARNING_RATE = 3e-4
 NUM_EPISODES = 1_000
+MAX_STEPS = 500
 ENVIRONMENT = 'CartPole-v1'
 
 # Environment stuff
@@ -64,10 +65,54 @@ def train(rngs):
         # Return
         return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss , c_loss)
 
-    def run_episode():
+    def run_episode(state_actor , state_critic , state_opt_a , state_opt_c , init_obs , init_env_state , rngs):
         
         def body_fn(carry , _):
-            pass
+            state_actor , state_critic , state_opt_a , state_opt_c , obs , env_state , rng , done = carry
+            rng , rng_action , rng_step = jax.random.split(rng , 3)
+
+            # Sampling Actor act
+            actor = nnx.merge(graphdef_actor , state_actor)
+            action , _ = actor.sample(obs , rng_action)
+
+            # Taking an environment step given the Actor's action
+            new_obs , new_env_state , reward , new_done , _ = env.step(
+                rng_step , env_state , action , env_params
+            )
+            
+            masked_reward = reward * (1.0 - done)
+
+            # Running a train step
+            (state_actor , state_critic , state_opt_a , state_opt_c , a_loss , c_loss) = train_step(
+                state_actor,
+                state_critic,
+                state_opt_a,
+                state_opt_c,
+                obs,
+                action,
+                masked_reward,
+                new_obs,
+                new_done
+            )
+            carry = (
+                state_actor,
+                state_critic,
+                state_opt_a,
+                state_opt_c,
+                new_obs,
+                new_env_state,
+                rng,
+                done | new_done
+            )
+
+            return carry , masked_reward
+
+        # Initialize the carry
+        init_carry = (state_actor , state_critic , state_opt_a , state_opt_c , init_obs , init_env_state , rng , jnp.bool_(False))
+
+        # Run the loop (a full episode)
+        final_carry , rewards = jax.lax.scan(body_fn , init_carry , None , length=MAX_STEPS)
+
 
     @jax.jit
     def train_all_episodes():
