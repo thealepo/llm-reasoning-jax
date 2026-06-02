@@ -55,4 +55,4 @@ print(f"Test accuracy: {accuracy:.2%}")
 The following links are to my YouTube videos in which I deep-dive into the concept and implementation:
 
 - Video 1: [How can we use an LLM's own Thinking to Train itself? The STaR Paper Dissected](https://www.youtube.com/watch?v=yygfKMu1DZI)
-- Video 2: <wip>
+- Video 2: [Build your own STaR Training Loop!](https://youtu.be/b1_9p77hdgw)

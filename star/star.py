@@ -40,5 +40,3 @@ def main(model , tokenizer , params , test_dataset , num_iterations=3 , max_new_
         sampler = make_sampler(model , params , tokenizer)
 
     return evaluate(model , params , tokenizer , test_dataset)
-        
-
