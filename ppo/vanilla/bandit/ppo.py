@@ -101,3 +101,14 @@ def train_all_episodes(state_actor , state_opt_a , rng):
     )
 
     return final_carry , episode_rewards
+
+# entr
+def train(rng):
+    actor = ActorModel(NUM_ARMS , HIDDEN , NUM_ARMS , rngs=nnx.Rngs(42))
+    optimizer_actor = nnx.Optimizer(actor , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
+
+    global graphdef_actor , graphdef_opt_a
+    graphdef_actor , state_actor = nnx.split(actor)
+    graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
+
+    return train_all_episodes(state_actor , state_opt_a , rng)
