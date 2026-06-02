@@ -16,12 +16,12 @@ LEARNING_RATE = 3e-4
 NUM_EPISODES = 1_000
 
 # Env
-TRUE_REWARD_PROB = jnp.array([0.2 , 0.3 , 0.9 , 0.2])
+TRUE_REWARD_PROBS = jnp.array([0.2 , 0.3 , 0.9 , 0.2])
 OBS = jnp.zeros(NUM_ARMS)
 
 # Bandit thing
 def pull(action , rng):
-    return jax.random.bernoulli(rng , TRUE_REWARD_PROB[action]).astype(jnp.float32)
+    return jax.random.bernoulli(rng , TRUE_REWARD_PROBS[action]).astype(jnp.float32)
 
 # Losses
 def actor_loss_fn(actor , actions , old_log_probs , advantages):
@@ -112,3 +112,27 @@ def train(rng):
     graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
 
     return train_all_episodes(state_actor , state_opt_a , rng)
+
+
+if __name__ == "__main__":
+    print(f"True Reward Probability: {TRUE_REWARD_PROBS}")
+    print("Optimal arm is 2 (prob=0.9)")
+
+    # Training.
+    rng = jax.random.PRNGKey(42)
+    final_carry , episode_rewards = train(rng)
+    state_actor , _ , _ = final_carry
+
+    # Checking the Policy
+    actor = nnx.merge(graphdef_actor , state_actor)
+    probs = jax.nn.softmax(actor(OBS))
+
+    best_arm = int(jnp.argmax(probs))
+    best_prob = float(probs[best_arm])
+    print(f'Policy chose arm {best_arm} with prob {best_prob}')
+
+    # Reward Trend
+    early_o , late_o = episode_rewards[:100] , episode_rewards[-100:]
+    early , late = float(early_o.mean()) , float(late_o.mean())
+
+    print(f'Early reward: {early:.3f} | Late reward: {late:.3f}')
