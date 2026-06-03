@@ -1,0 +1,4 @@
+# pycache bs
+__pycache__/
+*.pycache*.pyo
+.pytest_cache/
