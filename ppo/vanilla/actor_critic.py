@@ -4,7 +4,7 @@ from flax import nnx
 import optax
 import gymnax
 
-from model import ActorModel , CriticModel
+from .model import ActorModel , CriticModel
 
 
 # hyperparams
@@ -66,7 +66,7 @@ def train(rngs):
         # Return
         return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss , c_loss)
 
-    def run_episode(state_actor , state_critic , state_opt_a , state_opt_c , init_obs , init_env_state , rngs):
+    def run_episode(state_actor , state_critic , state_opt_a , state_opt_c , init_obs , init_env_state , rng):
         
         def body_fn(carry , _):
             state_actor , state_critic , state_opt_a , state_opt_c , obs , env_state , rng , done = carry
@@ -125,7 +125,7 @@ def train(rngs):
             rng , rng_reset , rng_episode = jax.random.split(rng , 3)
 
             # Resetting environment
-            init_obs , init_env_state = env.reset(key_reset , env_params)
+            init_obs , init_env_state = env.reset(rng_reset , env_params)
 
             # Running a singular episode
             (state_actor , state_critic , state_opt_a , state_opt_c , episode_reward , rng) = run_episode(
@@ -147,3 +147,12 @@ def train(rngs):
         state_opt_c,
         rng
     )
+
+
+if __name__ == "__main__":
+    rng = jax.random.PRNGKey(42)
+
+    (final_carry , episode_rewards) = train(rng)
+
+    print(f'First episode reward: {episode_rewards[0]:.1f}')
+    print(f'Last episode reward: {episode_rewards[-1]:.1f}')

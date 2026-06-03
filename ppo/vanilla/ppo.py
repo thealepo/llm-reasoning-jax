@@ -4,7 +4,7 @@ from flax import nnx
 import optax
 import gymnax
 
-from model import ActorModel , CriticModel
+from .model import ActorModel , CriticModel
 
 
 # hyperparams
@@ -215,3 +215,25 @@ def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , 
         scan_fn , init_carry , None , length=NUM_EPISODES
     )
     return final_carry , episode_rewards
+
+
+if __name__ == "__main__":
+    rng = jax.random.PRNGKey(42)
+    rng , actor_rng , critic_rng , train_rng = jax.random.split(rng , 4)
+
+    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=actor_rng)
+    critic = CriticModel(OBSERVATION_SIZE , rngs=critic_rng)
+    optimizer_actor = nnx.Optimizer(actor , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
+    optimizer_critic = nnx.Optimizer(critic , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
+
+    graphdef_actor , state_actor = nnx.split(actor)
+    graphdef_critic , state_critic = nnx.split(critic)
+    graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
+    graphdef_opt_c , state_opt_c = nnx.split(optimizer_critic)
+
+    _ , episode_rewards = train_all_episodes(
+        state_actor , state_critic , state_opt_a , state_opt_c , rng=train_rng
+    )
+
+    print(f'First episode reward: {episode_rewards[0]:.1f}')
+    print(f'Last episode reward: {episode_rewards[-1]:.1f}')
