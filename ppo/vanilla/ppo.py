@@ -17,7 +17,7 @@ LAMBDA = 0.95
 K_EPOCHS = 4
 N_STEPS = 128
 LEARNING_RATE = 3e-4
-NUM_EPISODES = 1_000
+NUM_ROLLOUTS = 1_000
 # MAX_STEPS = 500
 ENVIRONMENT = 'CartPole-v1'
 
@@ -40,7 +40,8 @@ def actor_loss_fn(actor , obs , actions , old_log_probs , advantages):
     clipped = jnp.clip(ratio , 1 - EPSILON , 1 + EPSILON) * jax.lax.stop_gradient(advantages)
 
     # Policy Loss
-    return -jnp.mean(jnp.minimum(cpi , clipped))
+    policy_loss = -jnp.mean(jnp.minimum(cpi , clipped))
+    return policy_loss
 
 
 def critic_loss_fn(critic , obs , returns):
@@ -68,11 +69,31 @@ def compute_gae(rewards , values , dones , next_value):
     returns = advantages + values
     return advantages , returns
 
+def compute_mean_episode_reward(rewards , dones):
+    
+    def body_fn(carry , rd):
+        rewards , dones = rd
+        carry += rewards
+
+        episode_return = jnp.where(dones , carry , 0.0)
+        carry = jnp.where(dones , 0.0 , carry)
+        return carry , episode_return
+
+    _ , episode_returns = jax.lax.scan(body_fn , 0.0 , (rewards , dones))
+
+    num_episodes = dones.sum()
+
+    return jnp.where(
+        num_episodes > 0,
+        episode_returns.sum() / num_episodes,
+        rewards.sum()
+    )
+
 def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
 
     def body_fn(carry , _):
         obs , env_state , rng = carry
-        rng , rng_action , rng_step = jax.random.split(rng , 3)
+        rng , rng_action , rng_step , rng_reset = jax.random.split(rng , 4)
 
         # Sampling Actor
         actor = nnx.merge(graphdef_actor , state_actor)
@@ -85,6 +106,14 @@ def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
         # Environment step
         new_obs , new_env_state , reward , done , _ = env.step(
             rng_step , env_state , action , env_params
+        )
+
+        # Environment Reset
+        reset_obs , reset_env_state = env.reset(rng_reset , env_params)
+        new_obs = jnp.where(done , reset_obs , new_obs)
+        new_env_state = jax.tree.map(
+            lambda r , s: jnp.where(done , r , s),
+            reset_env_state , new_env_state
         )
 
         carry = (new_obs , new_env_state , rng)
@@ -157,7 +186,7 @@ def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , a
         state_actor , state_critic , state_opt_a , state_opt_c = carry
 
         # Take a training step
-        state_actor , state_critic , state_opt_a , state_opt_c , a_loss , c_loss = train_step(
+        state_actor , state_critic , state_opt_a , state_opt_c , _ , _ = train_step(
             state_actor,
             state_critic,
             state_opt_a,
@@ -195,7 +224,10 @@ def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , 
 
         # Carry
         carry = (state_actor , state_critic , state_opt_a , state_opt_c , next_obs , next_env_state , rng)
-        return carry , rewards.sum()
+
+        average_episode_reward = compute_mean_episode_reward(rewards, dones)
+
+        return carry , average_episode_reward
 
     # Initiale environment reset
     rng , rng_reset = jax.random.split(rng)
@@ -217,23 +249,33 @@ def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , 
     return final_carry , episode_rewards
 
 
+# Testing the speed and validity of implementation
 if __name__ == "__main__":
-    rng = jax.random.PRNGKey(42)
-    rng , actor_rng , critic_rng , train_rng = jax.random.split(rng , 4)
+    import time
 
-    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=nnx.Rngs(0))
-    critic = CriticModel(OBSERVATION_SIZE , HIDDEN , rngs=nnx.Rngs(1))
+    rng = jax.random.PRNGKey(42)
+    rng , rng_train = jax.random.split(rng , 2)
+
+    # Initializing the models and optimizers
+    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=rngs)
+    critic = CriticModel(OBSERVATION_SIZE , HIDDEN , rngs=rngs)
     optimizer_actor = nnx.Optimizer(actor , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
     optimizer_critic = nnx.Optimizer(critic , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
 
+    # Splitting the architecture from the parameters
     graphdef_actor , state_actor = nnx.split(actor)
     graphdef_critic , state_critic = nnx.split(critic)
     graphdef_opt_a , state_opt_a = nnx.split(optimizer_actor)
     graphdef_opt_c , state_opt_c = nnx.split(optimizer_critic)
 
-    _ , episode_rewards = train_all_episodes(
-        state_actor , state_critic , state_opt_a , state_opt_c , rng=train_rng
-    )
+    # Beginning training -- tracking the time as well
+    print(f"TRAINING. {NUM_ROLLOUTS} ROLLOUTS, {N_STEPS} STEPS PER")
+    t0 = time.time()
+    final_carry , episode_rewards = train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , rng=rng_train)
+    episode_rewards.block_until_ready()
+    time_taken = time.time() - t0
 
-    print(f'First episode reward: {episode_rewards[0]:.1f}')
-    print(f'Last episode reward: {episode_rewards[-1]:.1f}')
+    # Evaluating!!!
+    print(f"Time taken (JAX)! {time_taken:.2f}")
+    print(f"First 10 Episode Rewards: {episode_rewards[:10]}")
+    print(f"Last 10 Episode Rewards: {episode_rewards[-10:]}")
