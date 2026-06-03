@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flax import nnx
 import optax
 
-from model import ActorModel
+from ..model import ActorModel
 
 
 # Hyperparams
@@ -25,7 +25,7 @@ def pull(action , rng):
 
 # Losses
 def actor_loss_fn(actor , actions , old_log_probs , advantages):
-    logits = jax.vmap(actor)(OBS)
+    logits = jax.vmap(actor)(jnp.tile(OBS , (N_STEPS , 1)))
     log_probs = jax.nn.log_softmax(logits)
     action_log_probs = log_probs[jnp.arange(N_STEPS) , actions]
 
@@ -60,7 +60,7 @@ def train_step(state_actor , state_opt_a , actions , old_log_probs , advantages)
     optimizer_actor = nnx.merge(graphdef_opt_a , state_opt_a)
 
     def a_loss(params):
-        a = nnx.merge(actor , params)
+        a = nnx.merge(graphdef_actor , params)
         return actor_loss_fn(a , actions , old_log_probs , advantages)
 
     a_loss_val , a_grads = jax.value_and_grad(a_loss)(nnx.state(actor))
@@ -68,7 +68,7 @@ def train_step(state_actor , state_opt_a , actions , old_log_probs , advantages)
 
     return nnx.state(actor) , nnx.state(optimizer_actor) , a_loss_val
 
-def train_epoch(state_actor , state_opt_a , old_log_probs , advantages):
+def train_epoch(state_actor , state_opt_a , actions , old_log_probs , advantages):
 
     def body_fn(i , carry):
         state_actor , state_opt_a = carry
@@ -89,7 +89,7 @@ def train_all_episodes(state_actor , state_opt_a , rng):
         actions , rewards , old_log_probs , advantages , rng = rollout(state_actor , rng)
 
         state_actor , state_opt_a = train_epoch(
-            state_actor , state_opt_a , old_log_probs , advantages
+            state_actor , state_opt_a , actions , old_log_probs , advantages
         )
 
         carry = (state_actor , state_opt_a , rng)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     print(f'Policy chose arm {best_arm} with prob {best_prob}')
 
     # Reward Trend
-    early_o , late_o = episode_rewards[:100] , episode_rewards[-100:]
-    early , late = float(early_o.mean()) , float(late_o.mean())
+    early_ , late_ = episode_rewards[:100] , episode_rewards[-100:]
+    early , late = float(early_.mean()) , float(late_.mean())
 
     print(f'Early reward: {early:.3f} | Late reward: {late:.3f}')
