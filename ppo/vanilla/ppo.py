@@ -244,7 +244,7 @@ def train_all_episodes(state_actor , state_critic , state_opt_a , state_opt_c , 
     )
 
     final_carry , episode_rewards = jax.lax.scan(
-        scan_fn , init_carry , None , length=NUM_EPISODES
+        scan_fn , init_carry , None , length=NUM_ROLLOUTS
     )
     return final_carry , episode_rewards
 
