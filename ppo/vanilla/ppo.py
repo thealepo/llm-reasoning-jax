@@ -148,7 +148,7 @@ def train_step(state_actor , state_critic , state_opt_a , state_opt_c , obs , ac
     optimizer_actor.update(actor, a_grads)
     optimizer_critic.update(critic, c_grads)
 
-    return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , actor_loss_val , critic_loss_val)
+    return (nnx.state(actor) , nnx.state(critic) , nnx.state(optimizer_actor) , nnx.state(optimizer_critic) , a_loss_val , c_loss_val)
 
 
 def train_epoch(state_actor , state_critic , state_opt_a , state_opt_c , obs , actions , old_log_probs , advantages , returns):
@@ -221,8 +221,8 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(42)
     rng , actor_rng , critic_rng , train_rng = jax.random.split(rng , 4)
 
-    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=actor_rng)
-    critic = CriticModel(OBSERVATION_SIZE , rngs=critic_rng)
+    actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=nnx.Rngs(0))
+    critic = CriticModel(OBSERVATION_SIZE , HIDDEN , rngs=nnx.Rngs(1))
     optimizer_actor = nnx.Optimizer(actor , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
     optimizer_critic = nnx.Optimizer(critic , optax.adam(LEARNING_RATE) , wrt=nnx.Param)
 
