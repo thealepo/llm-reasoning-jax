@@ -123,7 +123,7 @@ def rollout(state_actor , state_critic , init_obs , init_env_state , rng):
     # Initial carry
     init_carry = (init_obs , init_env_state , rng)
 
-    # Full rollout + Memoruy and FInal carry
+    # Full rollout + Buffer and FInal carry
     final_carry , memory = jax.lax.scan(
         body_fn,
         init_carry,
