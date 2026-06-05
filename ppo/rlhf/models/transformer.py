@@ -62,3 +62,42 @@ class MultiLayerPerceptron(nnx.Module):
     def __init__(self , config: TransformerConfig , rngs: nnx.Rngs):
         self.fc1 = nnx.Linear(config.HIDDEN_SIZE , config.MLP_HIDDEN_SIZE , rngs=rngs)
         self.fc2 = nnx.Linear(config.MLP_HIDDEN_SIZE , config.HIDDEN_SIZE , rngs=rngs)
+
+    def __call__(self , x):
+        x = self.fc1(x)
+        x = nnx.gelu(x)
+        x = self.fc2(x)
+        return x
+
+class TransformerLayer(nnx.Module):
+    def __init__(self , config: TransformerConfig , rngs: nnx.Rngs):
+        self.mhsa = MultiHeadSelfAttention(config , rngs=rngs)
+        self.mlp = MultiLayerPerceptron(config , rngs=rngs)
+        self.ln1 = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)
+        self.ln2 = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)
+
+    def __call__(self , x):
+        x = self.mhsa(self.ln1(x))
+        x = self.mlp(self.ln2(x))
+        return x
+
+class Transformer(nnx.Module):
+    def __init__(self , config: TransformerConfig , rngs: nnx.Rngs):
+        self.wte = nnx.Embed(config.VOCAB_SIZE , config.HIDDEN_SIZE , rngs=rngs)
+        self.wtp = nnx.Embed(config.SEQ_LEN , config.HIDDEN_SIZE , rngs=rngs)
+        self.layers = nnx.List([TransformerLayer(config , rngs) for _ in range(config.N_LAYERS)])
+        self.ln_f = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)  # final LayerNorm
+
+    def __call__(self , input_ids):
+        batch_size , seq_len = input_ids.shape  # [batch , seq_len]
+        positions = jnp.arange(seq_len)
+
+        # vanilla positonal embedding
+        x = self.wte(input_ids) + self.wpe(positions)
+
+        # Transformer layers
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.ln_f(x)
+        return x  # [batch , seq_len m hidden_size]
