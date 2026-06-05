@@ -27,6 +27,7 @@ def compute_gae(rewards , values , next_value , mask):
 
 # Unit testing
 if __name__ == "__main__":
+    # ONE
     rewards = jnp.array([1.0])
     values = jnp.array([0.5])
     last_value = jnp.float32(0.0)
@@ -35,3 +36,13 @@ if __name__ == "__main__":
     advantages , returns = compute_gae(rewards , values , last_value , mask)
     print(advantages)  # 0.5
     print(returns) # 1.0
+
+    # TWO
+    rewards = jnp.array([1.0 , 0.6 , 1.3])
+    values = jnp.array([0.8 , 1.9 , 0.1])
+    last_value = jnp.float32(0.3)
+    mask = jnp.array([1.0 , 1.0 , 1.0])
+
+    advantages , returns = compute_gae(rewards , values , last_value , mask)
+    print(advantages)
+    print(returns)
