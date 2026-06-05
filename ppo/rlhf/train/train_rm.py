@@ -119,6 +119,7 @@ def train_step(state_model , state_optimizer , input_ids_winner , input_ids_lose
 
     return (nnx.state(model) , nnx.state(optimizer) , loss_val)
 
+@jax.jit
 def train_epoch(state_model , state_optimizer , input_ids_winners , input_ids_losers , mask_winners , mask_losers):
 
     def body_fn(carry , batch):
@@ -145,6 +146,8 @@ def train_epoch(state_model , state_optimizer , input_ids_winners , input_ids_lo
 
 #================================================================================================
 if __name__ == "__main__":
+    import time
+
     rng = jax.random.PRNGKey(42)
     rngs = nnx.Rngs(rng)
     config = Config()
@@ -164,4 +167,8 @@ if __name__ == "__main__":
     graphdef_rm , state_rm = nnx.split(reward_model)
     graphdef_rm_optimizer , state_rm_optimizer = nnx.split(reward_optimizer)
 
-    final_carry , losses = train_epoch(state_rm , state_rm_optimizer , input_ids_winners , input_ids_losers , mask_winners , mask_losers)
+    for epoch in range(10):
+        t0 = time.time()
+        final_carry , losses = train_epoch(state_rm , state_rm_optimizer , input_ids_winners , input_ids_losers , mask_winners , mask_losers)
+        print(f'Epoch {epoch}, Mean Loss: {losses.mean():.4f}, Time: {time.time()-t0:.3f}s')
+        state_rm , state_rm_optimizer = final_carry
