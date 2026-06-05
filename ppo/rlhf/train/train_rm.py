@@ -4,6 +4,9 @@ from flax import nnx
 from einops import rearrange
 from dataclasses import dataclass
 
+
+# NOTE: MAKE A NEW FILE FOR ALL THE TRANSFORMER ARCHITECTURE...
+
 # hyperparams for a language model
 @dataclass(frozen=True , kw_only=True , slots=True)
 class Config:
@@ -96,9 +99,18 @@ class Transformer(nnx.Module):
         x = x[jnp.arange(x.shape[0]) , last_token_index]
         return self.final(x).squeeze(-1)
 
+#===============================================================================================
+
 def bradley_terry_loss(y_winner , y_loser):
     return -jnp.log(jax.nn.sigmoid(y_winner - y_loser))
 
+
+
+
+
+
+
+#================================================================================================
 if __name__ == "__main__":
     y_winner = 6.74
     y_loser = -2.31
