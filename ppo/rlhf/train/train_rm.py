@@ -80,7 +80,7 @@ class Transformer(nnx.Module):
         self.ln_f = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)
         self.final = nnx.Linear(config.HIDDEN_SIZE , 1 , rngs=rngs)  # FOR THE RM
 
-    def __call__(self , input_ids):
+    def __call__(self , input_ids , mask):
         batch_size , seq_len = input_ids.shape
         positions = jnp.arange(seq_len)
 
@@ -91,7 +91,8 @@ class Transformer(nnx.Module):
 
         x = self.ln_f(x)
 
-        last_token_index = mask.sum(axis=-1).astype(jnp.int32)
+        last_token_index = mask.sum(axis=-1).astype(jnp.int32) - 1
+        print(last_token_index)
         x = x[jnp.arange(x.shape[0]) , last_token_index]
         return self.final(x).squeeze(-1)
 
@@ -113,5 +114,19 @@ if __name__ == "__main__":
     model = Transformer(config , rngs=rngs)
     input_ids = jnp.ones((4,32) , dtype=jnp.int32)
     mask = jnp.ones((4,32))
-    scores = model(input_ids)
+    scores = model(input_ids , mask)
     assert scores.shape == (4,) , f"Epxected (4,) but got {scores.shape}"
+
+    def loss_fn(model):
+        scores = model(input_ids , mask)
+        return scores.mean()
+    grads = nnx.grad(loss_fn)(model)
+    jax.tree.map(lambda g: print(jnp.any(jnp.isnan(g))) , grads)
+
+    mask = jnp.array([
+        [1,1,1,1,0,0,0,0],
+        [1,1,0,0,0,0,0,0],
+    ])
+    input_ids = jnp.ones((2,8) , dtype=jnp.int32)
+    scores = model(input_ids,mask)
+    assert scores.shape == (2,)
