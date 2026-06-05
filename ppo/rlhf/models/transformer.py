@@ -100,7 +100,7 @@ class Transformer(nnx.Module):
             x = layer(x)
 
         x = self.ln_f(x)
-        return x  # [batch , seq_len m hidden_size]
+        return x  # [batch , seq_len , hidden_size]
 
 # quick test
 if __name__ == "__main__":
