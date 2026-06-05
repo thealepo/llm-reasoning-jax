@@ -255,6 +255,7 @@ if __name__ == "__main__":
 
     rng = jax.random.PRNGKey(42)
     rng , rng_train = jax.random.split(rng , 2)
+    rngs = nnx.Rngs(rng)
 
     # Initializing the models and optimizers
     actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=rngs)
