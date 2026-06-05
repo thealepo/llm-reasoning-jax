@@ -101,13 +101,46 @@ class Transformer(nnx.Module):
 
 #===============================================================================================
 
+# (input_ids_winner , input_ids_loser , mask_winner , mask_loser)
+
 def bradley_terry_loss(y_winner , y_loser):
     return -jnp.log(jax.nn.sigmoid(y_winner - y_loser))
 
+def train_step(state_model , state_optimizer , input_ids_winner , input_ids_loser , mask_winner , mask_loser):
+    model = nnx.merge(graphdef_model , state_model)
+    optimizer = nnx.merge(graphdef_optimizer , state_optimizer)
 
+    def loss_fn(params):
+        rm = nnx.merge(graphdef_model , params)
+        score_winner , score_loser = rm(input_ids_winner , mask_winner) , rm(input_ids_loser , mask_loser)
+        return bradley_terry_loss(score_winner , score_loser)
+    loss_val , grads = jax.value_and_grad(loss_fn)(nnx.state(model))
+    optimizer.update(model , grads)
 
+    return (nnx.state(model) , nnx.state(optimizer) , loss_val)
 
+def train_epoch(state_model , state_optimizer , input_ids_winners , input_ids_losers , mask_winners , mask_losers):
 
+    def body_fn(carry , batch):
+        state_model , state_optimizer = carry
+        input_ids_winner , input_ids_loser , mask_winner , mask_loser = batch
+
+        state_model , state_optimizer , loss = train_step(
+            state_model,
+            state_optimizer,
+            input_ids_winner,
+            input_ids_loser,
+            mask_winner,
+            mask_loser
+        )
+        return (state_model , state_optimizer) , loss
+
+    init_carry = (state_model , state_optimizer)
+    batches = (input_ids_winners , input_ids_losers , mask_winners , mask_losers)
+    final_carry , losses = jax.lax.scan(
+        body_fn , init_carry , batches
+    )
+    return final_carry , losses
 
 
 #================================================================================================
