@@ -25,4 +25,37 @@ def value_loss_fn(critic , input_ids , returns , mask):
 
 # Unit Tests
 if __name__ == "__main__":
-    pass
+    # Policy Loss
+    # No ratio, just -mean(advantages)
+    batch , seq_len = 2 , 4
+    advantages = jnp.array([
+        [1.0 , -0.5 , 0.6 , 0.8],
+        [0.2 , 0.0 , -0.7 , 0.0]
+    ])
+    old_log_probs = jnp.zeros((batch , seq_len))
+    mask = jnp.array([
+        [1.0 , 1.0 , 1.0 , 1.0],
+        [1.0 , 0.0 , 1.0 , 0.0]
+    ])
+    real_advantages = jnp.array([
+        [1.0 , -0.5 , 0.6 , 0.8 , 0.2 , -0.7]
+    ])
+    expected = -jnp.mean(real_advantages)
+    print(f'Expected Polucy Loss: {expected:.4}')
+
+    # Value Loss
+    values = jnp.array([
+        [1.0 , 0.8 , 0.6 , 9.9],
+        [0.5 , 0.3 , 9.4 , 9.4]
+    ])
+    returns = jnp.array([
+        [1.0 , 0.8 , 0.6 , 0.0],
+        [0.5 , 0.3 , 0.0 , 0.0]
+    ])
+    mask = jnp.array([
+        [1.0 , 1.0 , 1.0 , 0.0],
+        [1.0 , 1.0 , 0.0 , 0.0]
+    ])
+    loss = (values - returns) ** 2
+    result = jnp.sum(loss * mask) / jnp.sum(mask)
+    print(result)
