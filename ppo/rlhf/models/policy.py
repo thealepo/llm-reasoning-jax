@@ -25,9 +25,11 @@ class PolicyModel(nnx.Module):
 
 if __name__ == "__main__":
     config = TransformerConfig()
-    model = Transformer(config , rngs=nnx.Rngs(0))
+    policy = PolicyModel(config , rngs=nnx.Rngs(0))
 
     input_ids = jnp.ones((4,32) , dtype=jnp.int32)
-    x = model(input_ids)
+    log_probs = policy.log_probs_of(input_ids)
 
-    assert x.shape == (4,32) , f"Expected (4 , 32) but got {x.shape}"
+    assert log_probs.shape == (4,32) , f"Expected (4 , 32) but got {log_probs.shape}"
+    assert jnp.all(log_probs <= 0) , f"Log Probs must be negative"
+    print("Yay!")
