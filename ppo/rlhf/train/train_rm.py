@@ -95,7 +95,6 @@ class Transformer(nnx.Module):
         x = self.ln_f(x)
 
         last_token_index = mask.sum(axis=-1).astype(jnp.int32) - 1
-        print(last_token_index)
         x = x[jnp.arange(x.shape[0]) , last_token_index]
         return self.final(x).squeeze(-1)
 
