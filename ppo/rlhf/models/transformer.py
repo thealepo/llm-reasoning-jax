@@ -17,7 +17,7 @@ class TransformerConfig:
 # MHSA
 class MultiHeadSelfAttention(nnx.Module):
     def __init__(self , config: TransformerConfig , rngs: nnx.Rngs):
-        self.n_heads = N_HEADS
+        self.n_heads = config.N_HEADS
         self.head_size = config.HIDDEN_SIZE // config.N_HEADS
         self.output_size = config.HIDDEN_SIZE
         self.hidden_size = config.HIDDEN_SIZE
@@ -35,14 +35,14 @@ class MultiHeadSelfAttention(nnx.Module):
 
         # To account for the multiple heads, we rearrange the shape of our tensors
         def mha_rearrange(t):
-            return rearrange(m , 'b n (h d) -> b h n d')  # [batch , n_heads , seq_len , head_dim]
+            return rearrange(t , 'b n (h d) -> b h n d' , h=self.n_heads)  # [batch , n_heads , seq_len , head_dim]
         Q , K , V = map(mha_rearrange , (Q,K,V))
 
         # Scale 1 / sqrt(head_dim)
         scale = (self.head_size) ** -0.5
 
         # Computing self-attention
-        attention_weights = (jnp.einsum('b n i d , b n h j -> b n i j') , Q , K) * scale  # QK^T / scale
+        attention_weights = (jnp.einsum('b h i d , b h j d -> b h i j' , Q , K)) * scale  # QK^T / scale
 
         # Attention Causal map... to avoid tokens attending into future
         seq_len = x.shape[1]
@@ -51,7 +51,7 @@ class MultiHeadSelfAttention(nnx.Module):
 
         attention_weights = jnp.where(causal_mask , attention_weights , float('-inf'))
         attention_weights = jax.nn.softmax(attention_weights , axis=-1)
-        out = jnp.einsum('b n i j , b n j d -> b n i d')  # multiplying by V
+        out = jnp.einsum('b n i j , b n j d -> b n i d' , attention_weights , V)  # multiplying by V
 
         out = rearrange(out , 'b h n d -> b n (h d)') # Back to [batch , seq_len , hidden_size]
         out = self.Wo(out)
@@ -84,7 +84,7 @@ class TransformerLayer(nnx.Module):
 class Transformer(nnx.Module):
     def __init__(self , config: TransformerConfig , rngs: nnx.Rngs):
         self.wte = nnx.Embed(config.VOCAB_SIZE , config.HIDDEN_SIZE , rngs=rngs)
-        self.wtp = nnx.Embed(config.SEQ_LEN , config.HIDDEN_SIZE , rngs=rngs)
+        self.wpe = nnx.Embed(config.SEQ_LEN , config.HIDDEN_SIZE , rngs=rngs)
         self.layers = nnx.List([TransformerLayer(config , rngs) for _ in range(config.N_LAYERS)])
         self.ln_f = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)  # final LayerNorm
 
@@ -101,3 +101,14 @@ class Transformer(nnx.Module):
 
         x = self.ln_f(x)
         return x  # [batch , seq_len m hidden_size]
+
+# quick test
+if __name__ == "__main__":
+    config = TransformerConfig()
+    model = Transformer(config , rngs=nnx.Rngs(0))
+
+    input_ids = jnp.ones((4,32) , dtype=jnp.int32)
+    x = model(input_ids)
+
+    assert x.shape == (4,32,config.HIDDEN_SIZE) , f"Expected (4 , 32 , {config.HIDDEN_SIZE}) but got {x.shape}"
+    print(f"Output shape: {x.shape}")

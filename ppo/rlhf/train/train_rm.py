@@ -6,9 +6,7 @@ from dataclasses import dataclass
 import optax
 
 #===============================================================================================
-
 # (input_ids_winner , input_ids_loser , mask_winner , mask_loser)
-
 def bradley_terry_loss(y_winner , y_loser):
     return -jnp.log(jax.nn.sigmoid(y_winner - y_loser)).mean()
 
@@ -48,9 +46,8 @@ def train_epoch(state_model , state_optimizer , input_ids_winners , input_ids_lo
         body_fn , init_carry , batches
     )
     return final_carry , losses
-
-
 #================================================================================================
+
 if __name__ == "__main__":
     import time
 
