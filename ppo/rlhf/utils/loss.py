@@ -23,6 +23,9 @@ def value_loss_fn(critic , input_ids , returns , mask):
     loss = (values - jax.lax.stop_gradient(returns)) ** 2
     return jnp.sum(loss * mask) / jnp.sum(mask)
 
+def compute_KL_penalty(log_probs_rl , log_probs_sft , beta):
+    return beta * (log_probs_rl - log_probs_sft)
+
 # Unit Tests
 if __name__ == "__main__":
     # Policy Loss
@@ -58,4 +61,18 @@ if __name__ == "__main__":
     ])
     loss = (values - returns) ** 2
     result = jnp.sum(loss * mask) / jnp.sum(mask)
-    print(result)
+    print(f'Expected Value loss: {result}')
+
+    # KL Pentalty if same
+    rl = jnp.array([0.34 , 0.87 , 0.43])
+    sft = jnp.array([0.34 , 0.87 , 0.43])
+    log_probs_rl , log_probs_sft = jnp.log(rl) , jnp.log(sft)
+    KL_Penalty = compute_KL_penalty(log_probs_rl , log_probs_sft , beta=0.95)
+    print(f'KL Penalthy: {KL_Penalty}')
+
+    # KL Penalty if different
+    rl = jnp.array([0.84 , 0.81 , 0.20])
+    sft = jnp.array([0.34 , 0.87 , 0.43])
+    log_probs_rl , log_probs_sft = jnp.log(rl) , jnp.log(sft)
+    KL_Penalty = compute_KL_penalty(log_probs_rl , log_probs_sft , beta=0.95)
+    print(f'KL Penalthy: {KL_Penalty}')
