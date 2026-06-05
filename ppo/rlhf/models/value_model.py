@@ -12,7 +12,7 @@ class ValueModel(nnx.Module):
     def __call__(self , input_ids , mask):
         x = self.transformer(input_ids)  # [batch , seq_len , hidden_size]
         x = self.value_head(x) # [batch , seq_len , 1]
-        return x.squeeze(-1)
+        return x.squeeze(-1)  # [batch , seq_len]... .squeeze() removes any dimension size 1
 
 
 if __name__ == "__main__":
