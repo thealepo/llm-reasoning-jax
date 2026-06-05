@@ -3,6 +3,7 @@ import jax.numpy as jnp
 from flax import nnx
 from einops import rearrange
 from dataclasses import dataclass
+import optax
 
 
 # NOTE: MAKE A NEW FILE FOR ALL THE TRANSFORMER ARCHITECTURE...
@@ -106,11 +107,11 @@ def bradley_terry_loss(y_winner , y_loser):
     return -jnp.log(jax.nn.sigmoid(y_winner - y_loser))
 
 def train_step(state_model , state_optimizer , input_ids_winner , input_ids_loser , mask_winner , mask_loser):
-    model = nnx.merge(graphdef_model , state_model)
-    optimizer = nnx.merge(graphdef_optimizer , state_optimizer)
+    model = nnx.merge(graphdef_rm , state_model)
+    optimizer = nnx.merge(graphdef_rm_optimizer , state_optimizer)
 
     def loss_fn(params):
-        rm = nnx.merge(graphdef_model , params)
+        rm = nnx.merge(graphdef_rm , params)
         score_winner , score_loser = rm(input_ids_winner , mask_winner) , rm(input_ids_loser , mask_loser)
         return bradley_terry_loss(score_winner , score_loser)
     loss_val , grads = jax.value_and_grad(loss_fn)(nnx.state(model))
@@ -144,33 +145,23 @@ def train_epoch(state_model , state_optimizer , input_ids_winners , input_ids_lo
 
 #================================================================================================
 if __name__ == "__main__":
-    y_winner = 6.74
-    y_loser = -2.31
-    print(f'Loss in Instance 1: {bradley_terry_loss(y_winner,y_loser)}')
-    y_winner = 0.3
-    y_loser = 8.3
-    print(f'Loss in Instance 2: {bradley_terry_loss(y_winner,y_loser)}')
-
-    # Transformer test
     rng = jax.random.PRNGKey(42)
     rngs = nnx.Rngs(rng)
     config = Config()
-    model = Transformer(config , rngs=rngs)
-    input_ids = jnp.ones((4,32) , dtype=jnp.int32)
-    mask = jnp.ones((4,32))
-    scores = model(input_ids , mask)
-    assert scores.shape == (4,) , f"Epxected (4,) but got {scores.shape}"
 
-    def loss_fn(model):
-        scores = model(input_ids , mask)
-        return scores.mean()
-    grads = nnx.grad(loss_fn)(model)
-    jax.tree.map(lambda g: print(jnp.any(jnp.isnan(g))) , grads)
+    rng , rng_w , rng_l = jax.random.split(rng , 3)
 
-    mask = jnp.array([
-        [1,1,1,1,0,0,0,0],
-        [1,1,0,0,0,0,0,0],
-    ])
-    input_ids = jnp.ones((2,8) , dtype=jnp.int32)
-    scores = model(input_ids,mask)
-    assert scores.shape == (2,)
+    # FAKE DATA
+    N_BATCHES , BATCH_SIZE , SEQ_LEN = 8 , 8 , 32
+    input_ids_winners = jax.random.randint(rng_w , (N_BATCHES,BATCH_SIZE,SEQ_LEN) , 0 , config.VOCAB_SIZE)
+    input_ids_losers = jax.random.randint(rng_l , (N_BATCHES,BATCH_SIZE,SEQ_LEN) , 0 , config.VOCAB_SIZE)
+    mask_winners = jnp.ones((N_BATCHES,BATCH_SIZE,SEQ_LEN))
+    mask_losers = jnp.ones((N_BATCHES,BATCH_SIZE,SEQ_LEN))
+
+    reward_model = Transformer(config , rngs=rngs)
+    reward_optimizer = nnx.Optimizer(reward_model , optax.adam(1e-3) , wrt=nnx.Param)
+
+    graphdef_rm , state_rm = nnx.split(reward_model)
+    graphdef_rm_optimizer , state_rm_optimizer = nnx.split(reward_optimizer)
+
+    final_carry , losses = train_epoch(state_rm , state_rm_optimizer , input_ids_winners , input_ids_losers , mask_winners , mask_losers)
