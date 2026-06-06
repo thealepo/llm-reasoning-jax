@@ -28,9 +28,10 @@ MAX_NEW_TOKENS = 32
 PPO_EPOCHS = 4
 
 # NOTE: MASK SHOULD LOWKEY JUST BE DEFINED OUTSIDE AND THEN PASSED THROUGH
-def rollout(state_policy , state_value , state_reward , state_reference , input_ids , prompt_len , rng):
-    # RNG stuff
+def rollout(graphdefs , state_policy , state_value , state_reward , state_reference , input_ids , prompt_len , rng):
+    # RNG stuff + graphdef unpacking
     rng , rng_gen = jax.random.split(rng)
+    graphdef_policy , graphdef_value , graphdef_reward , graphdef_reference , _ , _ = graphdefs
 
     # Merge graphdefs and states
     policy = nnx.merge(graphdef_policy , state_policy)
@@ -69,7 +70,9 @@ def rollout(state_policy , state_value , state_reward , state_reference , input_
     return y , response , log_probs_rl , advantages , returns , mask
     
 
-def train_step(state_policy , state_value , state_opt_p , state_opt_v , response , old_log_probs , advantages , returns , mask):
+def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_v , response , old_log_probs , advantages , returns , mask):
+    graphdef_policy , graphdef_value , _ , _ , graphdef_opt_p , graphdef_opt_v = graphdefs
+
     # Merging shit
     policy = nnx.merge(graphdef_policy , state_policy)
     value = nnx.merge(graphdef_value , state_value)
@@ -92,12 +95,12 @@ def train_step(state_policy , state_value , state_opt_p , state_opt_v , response
     return (nnx.state(policy) , nnx.state(value) , nnx.state(optimizer_policy) , nnx.state(optimizer_value) , policy_loss_val , value_loss_val)
 
 # NOTE: 1 rollout -> k epochs
-def train_epoch(state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng):
+def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng):
 
     # Collect rollout
     rng , rng_rollout = jax.random.split(rng)
     y , response , old_log_probs , advantages , returns , mask = rollout(
-        state_policy , state_value , state_reward , state_reference ,
+        graphdefs , state_policy , state_value , state_reward , state_reference ,
         input_ids , prompt_len , rng_rollout
     )
 
@@ -105,7 +108,7 @@ def train_epoch(state_policy , state_value , state_reward , state_reference , st
     def body_fn(carry , _):
         state_policy , state_value , state_opt_p , state_opt_v = carry
         state_policy , state_value , state_opt_p , state_opt_v , policy_loss_val , value_loss_val = train_step(
-            state_policy , state_value , state_opt_p , state_opt_v , response , old_log_probs , advantages , returns , mask
+            graphdefs , state_policy , state_value , state_opt_p , state_opt_v , response , old_log_probs , advantages , returns , mask
         )
         return (state_policy , state_value , state_opt_p , state_opt_v) , (policy_loss_val , value_loss_val)
 
