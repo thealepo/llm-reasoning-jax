@@ -15,6 +15,7 @@
 import jax
 import jax.numpy as jnp
 from flax import nnx
+import optax
 
 from ..models.transformer import TransformerConfig
 from ..models.policy import PolicyModel
@@ -127,4 +128,61 @@ def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_ref
 #    pass
 
 if __name__ == "__main__":
-    pass
+    rng = jax.random.PRNGKey(0)
+    batch , prompt_len , vocab_size = 2 , 4 , 16
+    input_ids = jax.random.randint(rng , (batch,prompt_len) , 1 , vocab_size)
+
+    #init
+    config = TransformerConfig()
+    policy = PolicyModel(config , rngs=nnx.Rngs(0))
+    value = ValueModel(config , rngs=nnx.Rngs(1))
+    reward = RewardModel(config , rngs=nnx.Rngs(2))
+    reference = PolicyModel(config , rngs=nnx.Rngs(0))
+    optimizer_policy = nnx.Optimizer(policy , optax.adam(1e-3) , wrt=nnx.Param)
+    optimizer_value = nnx.Optimizer(value , optax.adam(1e-3) , wrt=nnx.Param)
+
+    #splits
+    graphdef_policy , state_policy = nnx.split(policy)
+    graphdef_value , state_value = nnx.split(value)
+    graphdef_reward , state_reward = nnx.split(reward)
+    graphdef_reference , state_reference = nnx.split(reference)
+    graphdef_opt_p , state_opt_p = nnx.split(optimizer_policy)
+    graphdef_opt_v , state_opt_v = nnx.split(optimizer_value)
+
+    graphdefs = (
+        graphdef_policy,
+        graphdef_value,
+        graphdef_reward,
+        graphdef_reference,
+        graphdef_opt_p,
+        graphdef_opt_v
+    )
+
+
+    # SMOKE TESTS
+    print('TEST 1')
+    y , response , log_probs , advantages , returns , mask = rollout(
+        graphdefs , state_policy , state_value , state_reward , state_reference ,
+        input_ids , prompt_len , rng
+    )
+    assert y.shape == (batch , prompt_len + MAX_NEW_TOKENS) , f"Bad y shape: {y.shape}"
+    assert response.shape == (batch , MAX_NEW_TOKENS)
+    assert log_probs.shape == (batch , MAX_NEW_TOKENS)
+    assert advantages.shape == (batch , MAX_NEW_TOKENS)
+    assert returns.shape == (batch , MAX_NEW_TOKENS)
+    assert mask.shape == (batch , MAX_NEW_TOKENS)
+    print("Smoke test passed")
+    print()
+
+    # MAKING SURE MASKS ARE HANDLED CORRECTLY
+    print('TEST 2')
+
+    print("y:\n", y)
+    print("response:\n" , response)
+    print("response min/max:" , response.min() , response.max())
+    print("mask:\n" , mask)
+
+    assert mask.sum() > 0 , "Mask is all zeros... nono"
+    masked_advantages = advantages * (1 - mask)
+    assert jnp.allclose(masked_advantages , 0.0) , "Advantages leaking into padding"
+    print()

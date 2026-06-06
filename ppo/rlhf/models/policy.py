@@ -32,7 +32,6 @@ class PolicyModel(nnx.Module):
     # Example: prompt_len + max_new_tokens >> max_seq_len
     # wtf to do.
     def generate(self , prompt , rng , max_new_tokens=256):
-        rng , rng_sample = jax.random.split(rng)
         batch , prompt_len = prompt.shape  # [batch , seq_len]
         total_len = prompt_len + max_new_tokens  # seq_len + max_new_tokens
 
@@ -42,8 +41,13 @@ class PolicyModel(nnx.Module):
 
         # Writing tokens in
         for i in range(max_new_tokens):
-            logits = self(buffer)
-            next_token = jax.random.categorical(rng_sample , logits[: , prompt_len + i - 1 , :] , axis=-1)
+            rng , rng_sample = jax.random.split(rng)
+            
+            filled = buffer[: , :prompt_len+i]
+            logits = self(filled)
+            next_token = jax.random.categorical(
+                rng_sample , logits[: , -1 , :] , axis=1
+            )
             buffer = buffer.at[: , prompt_len + i].set(next_token)
 
         return buffer
