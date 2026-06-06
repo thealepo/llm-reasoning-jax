@@ -23,7 +23,7 @@ from ..models.reward_model import RewardModel
 from ..utils.loss import policy_loss_fn , value_loss_fn , compute_KL_penalty
 from ..utils.gae import compute_gae
 
-BETA = 0.95
+BETA = 0.01
 MAX_NEW_TOKENS = 32
 PPO_EPOCHS = 4
 
