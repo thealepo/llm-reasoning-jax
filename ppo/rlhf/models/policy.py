@@ -32,9 +32,10 @@ class PolicyModel(nnx.Module):
         input_ids = prompt
         for _ in range(max_new_tokens):
             rng , rng_sample = jax.random.split(rng , 2)
-            logits = self(prompt)
+            logits = self(input_ids)
             next_token_logits = logits[: , -1 , :]
-            next_token = jax.random.categorical(rng_sample , next_token_logits , axis=-1)
+            next_token = jax.random.categorical(rng_sample , next_token_logits , axis=-1) # (4,)
+            next_token = next_token[: , jnp.newaxis]  # (4 , 1)
             input_ids = jnp.concatenate([input_ids , next_token] , axis=1)
         return input_ids
 
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     assert jnp.all(log_probs <= 0) , f"Log Probs must be negative"
     print("Yay!")
 
-    #
+    # generate() method tests@
     rng = jax.random.PRNGKey(42)
     prompt = jnp.ones((4,32) , dtype=jnp.int32)
     output = policy.generate(prompt , rng=rng)
