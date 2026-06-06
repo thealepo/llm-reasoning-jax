@@ -4,14 +4,14 @@ from flax import nnx
 
 EPSILON = 0.2
 
-def policy_loss_fn(actor , y , old_log_probs , advantages , mask):
+def policy_loss_fn(actor , response , old_log_probs , advantages , mask):
     # everything is (batch , seq_len)
-    logits = actor(y) #(batch , seq_len , vocab_size)
-    log_probs = jax.nn.log_softmax(logits , axis=-1)
+    logits = actor(response) #(batch , seq_len , vocab_size)
+    log_probs = jax.nn.log_softmax(logits , axis=-1) # (bathc , seq_len , vocab_size)
 
     token_log_probs = jnp.take_along_axis(
-        log_probs , input_ids[... , jnp.newaxis] , axis=1
-    ).squeeze(-1)
+        log_probs , response[... , jnp.newaxis] , axis=2
+    ).squeeze(-1) # (batch , seq_len)
 
     ratio = jnp.exp(token_log_probs - jax.lax.stop_gradient(old_log_probs))
 
@@ -22,8 +22,8 @@ def policy_loss_fn(actor , y , old_log_probs , advantages , mask):
 
     return jnp.sum(loss * mask) / jnp.sum(mask)
 
-def value_loss_fn(critic , input_ids , returns , mask):
-    values = jax.vmap(critic)(input_ids)
+def value_loss_fn(critic , response , returns , mask):
+    values = critic(response)
     loss = (values - jax.lax.stop_gradient(returns)) ** 2
     return jnp.sum(loss * mask) / jnp.sum(mask)
 
