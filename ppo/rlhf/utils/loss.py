@@ -4,9 +4,9 @@ from flax import nnx
 
 EPSILON = 0.2
 
-def policy_loss_fn(actor , input_ids , old_log_probs , advantages , mask):
+def policy_loss_fn(actor , y , old_log_probs , advantages , mask):
     # everything is (batch , seq_len)
-    logits = actor(input_ids) #(batch , seq_len , vocab_size)
+    logits = actor(y) #(batch , seq_len , vocab_size)
     log_probs = jax.nn.log_softmax(logits , axis=-1)
 
     token_log_probs = jnp.take_along_axis(
