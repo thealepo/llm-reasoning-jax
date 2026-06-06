@@ -81,10 +81,10 @@ def train_step(state_policy , state_value_model , state_opt_p , state_opt_v , y 
     # Trace-level loss function
     def policy_loss(params):
         p = nnx.merge(graphdef_policy , params)
-        return policy_loss_fn(p , response , old_log_probs , advantages , '''mask''')
+        return policy_loss_fn(p , response , old_log_probs , advantages , mask)
     def value_loss(params):
         v = nnx.merge(graphdef_value , params)
-        return value_loss_fn(v , response , returns , '''mask''')
+        return value_loss_fn(v , response , returns , mask)
 
     # Gathering losses, grads, and updating weights
     p_loss_val , p_grads = jax.value_and_grad(policy_loss)(nnx.state(policy))
