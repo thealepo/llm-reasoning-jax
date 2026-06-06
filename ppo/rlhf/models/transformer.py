@@ -77,8 +77,8 @@ class TransformerLayer(nnx.Module):
         self.ln2 = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)
 
     def __call__(self , x):
-        x = self.mhsa(self.ln1(x))
-        x = self.mlp(self.ln2(x))
+        x = x + self.mhsa(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
         return x
 
 class Transformer(nnx.Module):

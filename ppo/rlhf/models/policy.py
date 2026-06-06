@@ -7,12 +7,10 @@ from .transformer import Transformer , TransformerConfig
 class PolicyModel(nnx.Module):
     def __init__(self , config: TransformerConfig , rngs: nnx.Rngs):
         self.transformer = Transformer(config , rngs=rngs)
-        self.ln_f = nnx.LayerNorm(config.HIDDEN_SIZE , rngs=rngs)
         self.linear_head = nnx.Linear(config.HIDDEN_SIZE , config.VOCAB_SIZE , rngs=rngs)
 
     def __call__(self , input_ids):
         x = self.transformer(input_ids)
-        x = self.ln_f(x)
         x = self.linear_head(x)
         return x
 

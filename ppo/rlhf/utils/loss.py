@@ -6,8 +6,12 @@ EPSILON = 0.2
 
 def policy_loss_fn(actor , input_ids , old_log_probs , advantages , mask):
     # everything is (batch , seq_len)
-    logits = jax.vmap(actor)(input_ids) #(batch , seq_len , vocab_size)
+    logits = actor(input_ids) #(batch , seq_len , vocab_size)
     log_probs = jax.nn.log_softmax(logits , axis=-1)
+
+    token_log_probs = jnp.take_along_axis(
+        log_probs , input_ids[... , jnp.newaxis] , axis=1
+    ).squeeze(-1)
 
     ratio = jnp.exp(token_log_probs - jax.lax.stop_gradient(old_log_probs))
 
