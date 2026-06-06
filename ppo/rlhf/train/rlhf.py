@@ -12,3 +12,19 @@
 # Training:
 #    update policy and value weights
 #    probably inputs: (y , old_log_probs , advantages , returns)  
+
+def rollout():
+    pass
+
+def train_step():
+    pass
+
+def train_epoch():
+    pass
+    # fori_loop prob
+
+#def train():
+    pass
+
+if __name__ == "__main__":
+    pass
