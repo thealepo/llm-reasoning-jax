@@ -19,7 +19,7 @@ def policy_loss_fn(actor , input_ids , old_log_probs , advantages , mask):
     return jnp.sum(loss * mask) / jnp.sum(mask)
 
 def value_loss_fn(critic , input_ids , returns , mask):
-    values = jax.vamp(critic)(input_ids)
+    values = jax.vmap(critic)(input_ids)
     loss = (values - jax.lax.stop_gradient(returns)) ** 2
     return jnp.sum(loss * mask) / jnp.sum(mask)
 
