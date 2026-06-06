@@ -27,17 +27,28 @@ class PolicyModel(nnx.Module):
 
         return token_log_probs
 
-    # NOTE: ERROR HERE IN THE GENERATE FUNCTION. WITH JAX SHAPE SIZES. WORK ON IT SOON.
+    # NOTE: I have looked through a lot of JAX resources and a lot of LLM help
+    # But unsure how else to deal with this.Shapes must be static.
+    # If prompt is long and causes suitable responses exceeded the max lengths
+    # Unsure how to deal with the issue as of now
+    # Example: prompt_len + max_new_tokens >> max_seq_len
+    # wtf to do.
     def generate(self , prompt , rng , max_new_tokens=256):
-        input_ids = prompt
-        for _ in range(max_new_tokens):
-            rng , rng_sample = jax.random.split(rng , 2)
-            logits = self(input_ids)
-            next_token_logits = logits[: , -1 , :]
-            next_token = jax.random.categorical(rng_sample , next_token_logits , axis=-1) # (4,)
-            next_token = next_token[: , jnp.newaxis]  # (4 , 1)
-            input_ids = jnp.concatenate([input_ids , next_token] , axis=1)
-        return input_ids
+        rng , rng_sample = jax.random.split(rng)
+        batch , prompt_len = prompt.shape  # [batch , seq_len]
+        total_len = prompt_len + max_new_tokens  # seq_len + max_new_tokens
+
+        # Preallocating full buffer (to make function jit-able)
+        buffer = jnp.zeros((batch , total_len) , dtype=jnp.int32)
+        buffer = buffer.at[: , :prompt_len].set(prompt)
+
+        # Writing tokens in
+        for i in range(max_new_tokens):
+            logits = self(buffer)
+            next_token = jax.random.categorical(rng_sample , logits[: , prompt_len + i - 1 , :] , axis=-1)
+            buffer = buffer.at[: , prompt_len + i].set(next_token)
+
+        return buffer
 
 if __name__ == "__main__":
     config = TransformerConfig()
@@ -54,4 +65,4 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(42)
     prompt = jnp.ones((4,32) , dtype=jnp.int32)
     output = policy.generate(prompt , rng=rng)
-    print(output.shape)
+    print(output.shape) # (4 , 288)
