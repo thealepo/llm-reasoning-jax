@@ -87,13 +87,32 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     
 
 def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_v , response , old_log_probs , advantages , returns , mask):
+    print('==============================================================================================================================')
+    print('TRACING THE GRADIENTS')
+    graphdef_policy , graphdef_value , *_ = graphdefs
+    policy_test = nnx.merge(graphdef_policy , state_policy)
+    def policy_loss_test(params):
+        p = nnx.merge(graphdef_policy,params)
+        return policy_loss_fn(p , response , old_log_probs , advantages , mask)
+    loss_val , grads = jax.value_and_grad(policy_loss_test)(nnx.state(policy_test))
+    print('policy loss:' , loss_val)
+    print('loss is finite:' , jnp.isfinite(loss_val))
+    grad_leaves = jax.tree.leaves(grads)
+    print("number of grad tensors:" , len(grad_leaves))
+    print("any nonzero grads:" , any(jnp.any(g != 0) for g in grad_leaves))
+    print("any nan grads:" , any(jnp.any(jnp.isnan(g)) for g in grad_leaves))
+    print("any inf grads:" , any(jnp.any(jnp.isinf(g)) for g in grad_leaves))
+    before = jax.tree.leaves(state_policy)[0]
+    print("before leaf:" , before.shape , before.mean())
+    print("corresponding grad:" , grad_leaves[0].shape , grad_leaves[0].mean())
+    print('==============================================================================================================================')
     graphdef_policy , graphdef_value , _ , _ , graphdef_opt_p , graphdef_opt_v = graphdefs
 
     # Merging shit
-    policy = nnx.merge(graphdef_policy , state_policy)
-    value = nnx.merge(graphdef_value , state_value)
     optimizer_policy = nnx.merge(graphdef_opt_p , state_opt_p)
-    optimizer_value = nnx.merge(graphdef_opt_v , state_opt_v)
+    optimizer_value  = nnx.merge(graphdef_opt_v , state_opt_v)
+    policy = optimizer_policy.model
+    value  = optimizer_value.model
 
     # Loss functions
     def policy_loss(params):
@@ -105,8 +124,19 @@ def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_
 
     policy_loss_val , policy_grads = jax.value_and_grad(policy_loss)(nnx.state(policy))
     value_loss_val , value_grads = jax.value_and_grad(value_loss)(nnx.state(value))
-    optimizer_policy.update(policy , policy_grads)
-    optimizer_value.update(value , value_grads)
+    optimizer_policy.update(policy_grads)
+    optimizer_value.update(value_grads)
+
+    print('==============================================================================================================================')
+    before_mean = jax.tree.leaves(state_policy)[0].mean()
+    after_mean  = jax.tree.leaves(nnx.state(policy))[0].mean()
+    print("before mean:" , before_mean)
+    print("after mean:" , after_mean)
+    print("changed:" , not jnp.array_equal(
+        jax.tree.leaves(state_policy)[0],
+        jax.tree.leaves(nnx.state(policy))[0]
+    ))
+    print('==============================================================================================================================')
 
     return (nnx.state(policy) , nnx.state(value) , nnx.state(optimizer_policy) , nnx.state(optimizer_value) , policy_loss_val , value_loss_val)
 
@@ -152,8 +182,8 @@ if __name__ == "__main__":
     policy = PolicyModel(config , rngs=nnx.Rngs(0))
     value = ValueModel(config , rngs=nnx.Rngs(1))
     reward = RewardModel(config , rngs=nnx.Rngs(2))
-    optimizer_policy = nnx.Optimizer(policy , optax.adam(1e-3) , wrt=nnx.Param)
-    optimizer_value = nnx.Optimizer(value , optax.adam(1e-3) , wrt=nnx.Param)
+    optimizer_policy = nnx.ModelAndOptimizer(policy , optax.adam(1e-3) , wrt=nnx.Param)
+    optimizer_value = nnx.ModelAndOptimizer(value , optax.adam(1e-3) , wrt=nnx.Param)
 
     # splits
     graphdef_policy , state_policy = nnx.split(policy)
@@ -238,4 +268,37 @@ if __name__ == "__main__":
     assert jnp.all(jnp.isfinite(returns)) , f'NaN or Inf - returns'
     print('PASS TEST 6')
     print()
+
+    print('TEST 7: train_step losses')
+    sp2 , sv2 , sop2 , sov2 , policy_loss_val , value_loss_val = train_step(
+        graphdefs , state_policy , state_value , state_opt_p , state_opt_v ,
+        response , log_probs_rl , advantages , returns , mask
+    )
+    assert jnp.isfinite(policy_loss_val) , f'not finite: {policy_loss_val}'
+    assert jnp.isfinite(value_loss_val) , f'not finite: {value_loss_val}'
+    print(f'PASS TEST 7: pol_loss:{policy_loss_val:.4f} and val_loss: {value_loss_val:.4f}')
+    print()
+
+    print('TEST 8: weights are ACTUALLY updated')
+    graphdef_policy , *_ = graphdefs
+    policy_test = nnx.merge(graphdef_policy , state_policy)
+    def policy_loss_test(params):
+        p = nnx.merge(graphdef_policy , params)
+        return policy_loss_fn(p , response , log_probs_rl , advantages , mask)
+    _ , grads = jax.value_and_grad(policy_loss_test)(nnx.state(policy_test))
+    # finding grdeints
+    before_leaves = jax.tree.leaves(state_policy)
+    after_leaves = jax.tree.leaves(sp2)
+    grad_leaves = jax.tree.leaves(grads)
+    grad_norms = [jnp.abs(g).mean() for g in grad_leaves]
+    biggest_index = int(jnp.argmax(jnp.array(grad_norms)))
+    diffs = [jnp.abs(b - a).max() for b,a in zip(before_leaves , after_leaves)]
+    max_diff_overall = max(diffs)
+    biggest_diff_idx = int(jnp.argmax(jnp.array(diffs)))
+    print("max diff across ALL leaves:", max_diff_overall)
+    print("at index:" , biggest_diff_idx)
+    print("before:" , before_leaves[biggest_diff_idx].mean())
+    print("after:" , after_leaves[biggest_diff_idx].mean())
+    assert max_diff_overall > 1e-7, f"Weights barely changed: {max_diff_overall}"
+    print('PASS TEST 8')
 
