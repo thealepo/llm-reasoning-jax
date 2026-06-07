@@ -169,3 +169,26 @@ if __name__ == "__main__":
     assert returns.shape == (BATCH , MAX_NEW_TOKENS) , f'Bad: {returns.shape}'
     assert mask.shape == (BATCH , MAX_NEW_TOKENS) , f'Bad: {mask.shape}'
     print("PASS TEST 1")
+    print()
+
+    print("TEST 2: prompt stayed the same")
+    assert jnp.array_equal(y[: , :PROMPT_LEN] , input_ids) , "Bad!"
+    print('PASS TEST 2')
+    print()
+
+    print('TEST 3: response length is correct')
+    assert jnp.array_equal(response , y[: , PROMPT_LEN:]) , 'Bad!'
+    print('PASS TEST 3')
+    print()
+
+    print('TEST 4: mask output (uhoh)')
+    assert jnp.all(mask == 1.0) , f'Bad! got {mask}'
+    print('PASS TEST 4')
+    print()
+
+    print('TEST 5: log probs less than or eqla to zero')
+    assert jnp.all(log_probs_rl <= 0) , f'Bad, got {log_probs_rl.max()}'
+    print('PASS TEST 5')
+    print()
+
+    
