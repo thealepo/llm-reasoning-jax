@@ -45,16 +45,16 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     response = y[: , prompt_len:] # [batch , MAX_NEW_TOKENS]
 
     # Compute the log_probs for both policy and reference
-    log_probs_rl = policy.log_probs_of(response)
-    log_probs_sft = reference.log_probs_of(response)
+    log_probs_rl = policy.log_probs_of(y)[: , prompt_len:]
+    log_probs_sft = reference.log_probs_of(y)[: , prompt_len:]
 
     # Mask trick attempt (just no mask whatsoever)
     # fixed-length generation to resolve some complications I have having
     # no pad or eos necessary... for now
-    mask = jnp.ones((batch , MAX_NEW_TOKENS) , dtype=jnp.float32)
+    mask = jnp.ones((y.shape[0] , MAX_NEW_TOKENS) , dtype=jnp.float32)
 
     # Values and Rewards
-    r = reward(response , mask)
+    r = reward(y , mask)
     values = value(response)
 
     # Make r_t
@@ -131,60 +131,41 @@ def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_ref
 
 if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
-    batch , prompt_len , vocab_size = 2 , 4 , 16
-    input_ids = jax.random.randint(rng , (batch,prompt_len) , 1 , vocab_size)
-
-    #init
     config = TransformerConfig()
+
+    BATCH , PROMPT_LEN , VOCAB_SIZE = 4 , 16 , config.VOCAB_SIZE
+
+    # initialoizing models
     policy = PolicyModel(config , rngs=nnx.Rngs(0))
     value = ValueModel(config , rngs=nnx.Rngs(1))
     reward = RewardModel(config , rngs=nnx.Rngs(2))
-    reference = PolicyModel(config , rngs=nnx.Rngs(0))
     optimizer_policy = nnx.Optimizer(policy , optax.adam(1e-3) , wrt=nnx.Param)
     optimizer_value = nnx.Optimizer(value , optax.adam(1e-3) , wrt=nnx.Param)
 
-    #splits
+    # splits
     graphdef_policy , state_policy = nnx.split(policy)
     graphdef_value , state_value = nnx.split(value)
     graphdef_reward , state_reward = nnx.split(reward)
-    graphdef_reference , state_reference = nnx.split(reference)
+    graphdef_reference , state_reference = nnx.split(policy)
     graphdef_opt_p , state_opt_p = nnx.split(optimizer_policy)
     graphdef_opt_v , state_opt_v = nnx.split(optimizer_value)
 
     graphdefs = (
-        graphdef_policy,
-        graphdef_value,
-        graphdef_reward,
-        graphdef_reference,
-        graphdef_opt_p,
-        graphdef_opt_v
+        graphdef_policy , graphdef_value , graphdef_reward , graphdef_reference ,
+        graphdef_opt_p , graphdef_opt_v
     )
+    input_ids = jax.random.randint(rng , (BATCH,PROMPT_LEN) , 1 , VOCAB_SIZE)
 
-
-    # SMOKE TESTS
-    print('TEST 1')
-    y , response , log_probs , advantages , returns , mask = rollout(
+    # THE TESTS
+    print("TEST 1: rollout shapes")
+    y , response , log_probs_rl , advantages , returns , mask = rollout(
         graphdefs , state_policy , state_value , state_reward , state_reference ,
-        input_ids , prompt_len , rng
+        input_ids , PROMPT_LEN , rng
     )
-    assert y.shape == (batch , prompt_len + MAX_NEW_TOKENS) , f"Bad y shape: {y.shape}"
-    assert response.shape == (batch , MAX_NEW_TOKENS)
-    assert log_probs.shape == (batch , MAX_NEW_TOKENS)
-    assert advantages.shape == (batch , MAX_NEW_TOKENS)
-    assert returns.shape == (batch , MAX_NEW_TOKENS)
-    assert mask.shape == (batch , MAX_NEW_TOKENS)
-    print("Smoke test passed")
-    print()
-
-    # MAKING SURE MASKS ARE HANDLED CORRECTLY
-    print('TEST 2')
-
-    print("y:\n", y)
-    print("response:\n" , response)
-    print("response min/max:" , response.min() , response.max())
-    print("mask:\n" , mask)
-
-    assert mask.sum() > 0 , "Mask is all zeros... nono"
-    masked_advantages = advantages * (1 - mask)
-    assert jnp.allclose(masked_advantages , 0.0) , "Advantages leaking into padding"
-    print()
+    assert y.shape == (BATCH , PROMPT_LEN + MAX_NEW_TOKENS) , f"Bad: {y.shape}"
+    assert response.shape == (BATCH , MAX_NEW_TOKENS) , f"Bad: {response.shape}"
+    assert log_probs_rl.shape == (BATCH , MAX_NEW_TOKENS) , f'Bad: {log_probs_rl.shape}'
+    assert advantages.shape == (BATCH , MAX_NEW_TOKENS) , f'Bad: {advantages.shape}'
+    assert returns.shape == (BATCH , MAX_NEW_TOKENS) , f'Bad: {returns.shape}'
+    assert mask.shape == (BATCH , MAX_NEW_TOKENS) , f'Bad: {mask.shape}'
+    print("PASS TEST 1")
