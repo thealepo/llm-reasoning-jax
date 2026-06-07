@@ -152,23 +152,23 @@ def train(graphdefs , state_policy , state_value , state_reward , state_referenc
 
             print(
                 f"epoch [{epoch+1}/{n_epochs}] "
-                f"batch [{batch_idx+1}/{len(data)}] "
+                f"batch [{batch_index+1}/{len(data)}] "
                 f"policy_loss: {mean_p_loss:.4f} "
                 f"value_loss: {mean_v_loss:.4f}"
             )
 
-            epoch_mean_p = sum(epoch_policy_losses) / len(epoch_policy_losses)
-            epoch_mean_v = sum(epoch_value_losses)  / len(epoch_value_losses)
-            policy_loss_history.append(epoch_mean_p)
-            value_loss_history.append(epoch_mean_v)
+        epoch_mean_p = sum(epoch_policy_losses) / len(epoch_policy_losses)
+        epoch_mean_v = sum(epoch_value_losses)  / len(epoch_value_losses)
+        policy_loss_history.append(epoch_mean_p)
+        value_loss_history.append(epoch_mean_v)
 
-            print(f"--- epoch {epoch+1} summary | "
-                f"mean policy_loss: {epoch_mean_p:.4f} | "
-                f"mean value_loss: {epoch_mean_v:.4f} ---"
-            )
-            print()
+        print(f"--- epoch {epoch+1} summary | "
+            f"mean policy_loss: {epoch_mean_p:.4f} | "
+            f"mean value_loss: {epoch_mean_v:.4f} ---"
+        )
+        print()
 
-            return (state_policy , state_value , state_opt_p , state_opt_v , policy_loss_history , value_loss_history)
+    return (state_policy , state_value , state_opt_p , state_opt_v , policy_loss_history , value_loss_history)
 
 if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
