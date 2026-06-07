@@ -48,8 +48,10 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     log_probs_rl = policy.log_probs_of(response)
     log_probs_sft = reference.log_probs_of(response)
 
-    # Compute the reward (for the last token)
-    mask = (response != 0).astype(jnp.float32)  # mask is 1 where token, 0 where no token
+    # Mask trick attempt (just no mask whatsoever)
+    # fixed-length generation to resolve some complications I have having
+    # no pad or eos necessary... for now
+    mask = jnp.ones((batch , MAX_NEW_TOKENS) , dtype=jnp.float32)
 
     # Values and Rewards
     r = reward(response , mask)

@@ -31,7 +31,7 @@ class PolicyModel(nnx.Module):
     # Unsure how to deal with the issue as of now
     # Example: prompt_len + max_new_tokens >> max_seq_len
     # wtf to do.
-    def generate(self , prompt , rng , max_new_tokens=256):
+    def generate_old(self , prompt , rng , max_new_tokens=256):
         batch , prompt_len = prompt.shape  # [batch , seq_len]
         total_len = prompt_len + max_new_tokens  # seq_len + max_new_tokens
 
