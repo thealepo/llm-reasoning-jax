@@ -54,8 +54,16 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     mask = jnp.ones((y.shape[0] , MAX_NEW_TOKENS) , dtype=jnp.float32)
 
     # Values and Rewards
-    r = reward(y , mask)
+    r = reward(response , mask)  # NOTE: PASSING RESPONSE FOR NOW. IN THE FUTURE, THIS MUST HAVE ITS OWN MASK. SHAPE MISMATCH CAUSED THIS.
     values = value(response)
+
+    print('================================================GAE=============================================================')
+    print("r (reward scalar):" , r)
+    print("r has nan:" , jnp.any(jnp.isnan(r)))
+    print("values has nan:" , jnp.any(jnp.isnan(values)))
+    print("values:" , values)
+    print("log_probs_rl has nan:" , jnp.any(jnp.isnan(log_probs_rl)))
+    print("log_probs_sft has nan:" , jnp.any(jnp.isnan(log_probs_sft)))
 
     # Make r_t
     last_index = mask.sum(axis=-1).astype(jnp.int32) - 1  # [batch]
@@ -65,6 +73,11 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     # KL Penalties
     kl_penalties = compute_KL_penalty(log_probs_rl , log_probs_sft , beta=BETA)
     r_t -= kl_penalties
+
+    print("kl_penalties has nan:" , jnp.any(jnp.isnan(kl_penalties)))
+    print("r_t after KL:" , r_t)
+    print("r_t has nan:" , jnp.any(jnp.isnan(r_t)))
+    print('==============================================================================================================================')
 
     # Calculate the GAE
     next_value = jnp.zeros(values.shape[0])
@@ -212,10 +225,17 @@ if __name__ == "__main__":
         print(f'layer {i} mlp nan' , jnp.any(jnp.isnan(mlp_out)))
         x += attention_out
         x += mlp_out
+    print()
     #===================================
 
     print('TEST 5: log probs less than or eqla to zero')
     assert jnp.all(log_probs_rl <= 0) , f'Bad, got {log_probs_rl.max()}'
     print('PASS TEST 5')
+    print()
+
+    print('TEST 6: advantages and returns are finite')
+    assert jnp.all(jnp.isfinite(advantages)) , f'NaN or Inf - advantafges'
+    assert jnp.all(jnp.isfinite(returns)) , f'NaN or Inf - returns'
+    print('PASS TEST 6')
     print()
 
