@@ -100,7 +100,6 @@ def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_
     return (new_state_policy , new_state_value , new_opt_p , new_opt_v , policy_loss_val , value_loss_val)
 
 # NOTE: 1 rollout -> k epochs
-@jax.jit
 def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng):
 
     # Collect rollout
@@ -128,6 +127,7 @@ def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_ref
         state_policy , state_value , state_opt_p , state_opt_v ,
         policy_losses , value_losses
     )
+train_epoch = jax.jit(train_epoch , static_argnames=('graphdefs','prompt_len'))
 
 def train(graphdefs , state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , data , prompt_len , rng , n_epochs=10):
     # Tracking losses
@@ -152,7 +152,7 @@ def train(graphdefs , state_policy , state_value , state_reward , state_referenc
             policy_losses.block_until_ready()
 
             # Mena losses
-            batch_time = time.time(0) - batch-start
+            batch_time = time.time() - batch-start
             mean_p_loss = float(policy_losses.mean())
             mean_v_loss = float(value_losses.mean())
             epoch_policy_losses.append(mean_p_loss)
