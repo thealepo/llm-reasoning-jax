@@ -57,14 +57,6 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     r = reward(response , mask)  # NOTE: PASSING RESPONSE FOR NOW. IN THE FUTURE, THIS MUST HAVE ITS OWN MASK. SHAPE MISMATCH CAUSED THIS.
     values = value(response)
 
-    print('================================================GAE=============================================================')
-    print("r (reward scalar):" , r)
-    print("r has nan:" , jnp.any(jnp.isnan(r)))
-    print("values has nan:" , jnp.any(jnp.isnan(values)))
-    print("values:" , values)
-    print("log_probs_rl has nan:" , jnp.any(jnp.isnan(log_probs_rl)))
-    print("log_probs_sft has nan:" , jnp.any(jnp.isnan(log_probs_sft)))
-
     # Make r_t
     last_index = mask.sum(axis=-1).astype(jnp.int32) - 1  # [batch]
     r_t = jnp.zeros_like(values) # [batch , seq_len]
@@ -73,11 +65,6 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     # KL Penalties
     kl_penalties = compute_KL_penalty(log_probs_rl , log_probs_sft , beta=BETA)
     r_t -= kl_penalties
-
-    print("kl_penalties has nan:" , jnp.any(jnp.isnan(kl_penalties)))
-    print("r_t after KL:" , r_t)
-    print("r_t has nan:" , jnp.any(jnp.isnan(r_t)))
-    print('==============================================================================================================================')
 
     # Calculate the GAE
     next_value = jnp.zeros(values.shape[0])
