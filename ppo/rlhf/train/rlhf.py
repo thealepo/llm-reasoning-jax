@@ -275,3 +275,45 @@ if __name__ == "__main__":
     print("=======================================================================")
     print("ALL TESTS PAST")
     print("=======================================================================")
+    print('\n\n\n\n')
+
+    print('EPOCH TESTS')
+    print('TEST 10: train_epoch runs and works, smoke test')
+    sp3 , sv3 , sop3 , sov3 , policy_losses , value_losses = train_epoch(
+        graphdefs , state_policy , state_value , state_reward , state_reference ,
+        state_opt_p , state_opt_v , input_ids , PROMPT_LEN , rng
+    )
+    assert policy_losses.shape == (PPO_EPOCHS,) , f'Bad: {policy_losses.shape}'
+    assert value_losses.shape == (PPO_EPOCHS,) , f'Bad: {value_losses.shape}'
+    assert jnp.all(jnp.isfinite(policy_losses)) , f"Non-finite policy losses: {policy_losses}"
+    assert jnp.all(jnp.isfinite(value_losses)) ,  f"Non-finite value losses: {value_losses}"
+    print(f"policy losses across epochs: {policy_losses}")
+    print(f"value losses across epochs:  {value_losses}")
+    print('PASS TEST 10')
+    print()
+
+    print('TEST 11: any weight changes post epoch')
+    diffs = [jnp.abs(b - a).max() for b,a in zip(jax.tree.leaves(state_policy) , jax.tree.leaves(sp3))]
+    max_diff = max(diffs)
+    assert max_diff > 1e-7 , f"Weights unchanged after train_epoch: {max_diff}"
+    print(f"max weight diff after epoch: {max_diff:.6e}")
+    print('PASS TEST 11')
+    print()
+
+    print('TEST 12: policy loss decrease across PPO epochs, within one actual epoch')
+    first_loss = policy_losses[0]
+    last_loss = policy_losses[-1]
+    print(f"first PPO step loss: {first_loss:.4f}")
+    print(f"last  PPO step loss: {last_loss:.4f}")
+    assert last_loss < first_loss , f'Loss did not decrease'
+    print('PASS TEST 12')
+    print()
+
+    print('TEST 13: optimizer state changed')
+    opt_p_leaves_before = jax.tree.leaves(state_opt_p)
+    opt_p_leaves_after  = jax.tree.leaves(sop3)
+    opt_diffs = [jnp.abs(b - a).max() for b,a in zip(opt_p_leaves_before , opt_p_leaves_after)]
+    assert max(opt_diffs) > 0 , "Adam moments never updated"
+    print(f"max optimizer state diff: {max(opt_diffs):.6e}")
+    print('PASS TEST 13')
+    print()
