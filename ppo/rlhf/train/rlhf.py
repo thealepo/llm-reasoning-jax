@@ -128,8 +128,47 @@ def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_ref
         policy_losses , value_losses
     )
 
-#def train():
-#    pass
+def train(graphdefs , state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , data , prompt_len , rng , n_epochs=10):
+    # Tracking losses
+    policy_loss_history = []
+    value_loss_history = []
+
+    for epoch in range(n_epochs):
+        epoch_policy_losses = []
+        epoch_value_losses = []
+
+        for batch_index , input_ids in enumerate(data):
+            rng , rng_epoch = jax.random.split(rng)
+
+            state_policy , state_value , state_opt_p , state_opt_v , policy_losses , value_losses = train_epoch(
+                graphdefs , state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng_epoch
+            )
+
+            # Mena losses
+            mean_p_loss = float(policy_losses.mean())
+            mean_v_loss = float(value_losses.mean())
+            epoch_policy_losses.append(mean_p_loss)
+            epoch_value_losses.append(mean_v_loss)
+
+            print(
+                f"epoch [{epoch+1}/{n_epochs}] "
+                f"batch [{batch_idx+1}/{len(data)}] "
+                f"policy_loss: {mean_p_loss:.4f} "
+                f"value_loss: {mean_v_loss:.4f}"
+            )
+
+            epoch_mean_p = sum(epoch_policy_losses) / len(epoch_policy_losses)
+            epoch_mean_v = sum(epoch_value_losses)  / len(epoch_value_losses)
+            policy_loss_history.append(epoch_mean_p)
+            value_loss_history.append(epoch_mean_v)
+
+            print(f"--- epoch {epoch+1} summary | "
+                f"mean policy_loss: {epoch_mean_p:.4f} | "
+                f"mean value_loss: {epoch_mean_v:.4f} ---"
+            )
+            print()
+
+            return (state_policy , state_value , state_opt_p , state_opt_v , policy_loss_history , value_loss_history)
 
 if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
