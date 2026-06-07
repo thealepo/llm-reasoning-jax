@@ -152,7 +152,7 @@ def train(graphdefs , state_policy , state_value , state_reward , state_referenc
             policy_losses.block_until_ready()
 
             # Mena losses
-            batch_time = time.time() - batch-start
+            batch_time = time.time() - batch_start
             mean_p_loss = float(policy_losses.mean())
             mean_v_loss = float(value_losses.mean())
             epoch_policy_losses.append(mean_p_loss)
