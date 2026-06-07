@@ -53,7 +53,7 @@ class PolicyModel(nnx.Module):
         return buffer
 
     # attempt at JIT-able autoregressiv egeneration
-    def generate(self , prompt , rng , max_new_tokens=MAX_NEW_TOKENS):
+    def generate(self , prompt , rng , max_new_tokens=256):
         batch , prompt_len = prompt.shape
         total_len = prompt_len + max_new_tokens
 
@@ -77,7 +77,7 @@ class PolicyModel(nnx.Module):
             buffer = buffer.at[: , prompt_len + i].set(next_token)
             return i+1 , buffer , rng
 
-        _ , buffer , _ = jax.while_loop(
+        _ , buffer , _ = jax.lax.while_loop(
             cond_fn , body_fn , (jnp.int32(0) , buffer , rng)
         )
         return buffer
@@ -98,4 +98,3 @@ if __name__ == "__main__":
     assert jnp.array_equal(output[: , :PROMPT_LEN] , prompt)
     print("pass prompt")
 
-    
