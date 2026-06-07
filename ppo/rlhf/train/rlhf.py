@@ -45,8 +45,8 @@ def rollout(graphdefs , state_policy , state_value , state_reward , state_refere
     response = y[: , prompt_len:] # [batch , MAX_NEW_TOKENS]
 
     # Compute the log_probs for both policy and reference
-    log_probs_rl = policy.log_probs_of(y)[: , prompt_len:]
-    log_probs_sft = reference.log_probs_of(y)[: , prompt_len:]
+    log_probs_rl = policy.log_probs_of(response)
+    log_probs_sft = reference.log_probs_of(response)
 
     # Mask trick attempt (just no mask whatsoever)
     # fixed-length generation to resolve some complications I have having
@@ -186,9 +186,36 @@ if __name__ == "__main__":
     print('PASS TEST 4')
     print()
 
+    #===================================
+    print('NAN STUFF')
+    test = response
+    hidden = policy.transformer(test)
+    print('hidden nan:' , jnp.any(jnp.isnan(hidden)))
+    print('hidden extremes:' , hidden.min() , hidden.max())
+
+    logits = policy.linear_head(hidden)
+    print('logit nan:' , jnp.any(jnp.isnan(logits)))
+    print('logit extremes:' , logits.min() , logits.max())
+    
+    log_probs = jax.nn.log_softmax(logits , axis=-1)
+    print('log prob nan:' , jnp.any(jnp.isnan(log_probs)))
+    print('log prob extremes' , log_probs.min() , log_probs.max())
+
+    # maybe attention
+    x = policy.transformer.wte(test) + policy.transformer.wpe(jnp.arange(test.shape[1]))
+    print("embedding nan:", jnp.any(jnp.isnan(x)))
+
+    for i , layer in enumerate(policy.transformer.layers):
+        attention_out = layer.mhsa(layer.ln1(x))
+        print(f'layer {i} nan:' , jnp.any(jnp.isnan(attention_out)))
+        mlp_out = layer.mlp(layer.ln2(x))
+        print(f'layer {i} mlp nan' , jnp.any(jnp.isnan(mlp_out)))
+        x += attention_out
+        x += mlp_out
+    #===================================
+
     print('TEST 5: log probs less than or eqla to zero')
     assert jnp.all(log_probs_rl <= 0) , f'Bad, got {log_probs_rl.max()}'
     print('PASS TEST 5')
     print()
 
-    
