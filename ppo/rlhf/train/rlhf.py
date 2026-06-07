@@ -12,6 +12,7 @@
 # Training:
 #    update policy and value weights
 #    probably inputs: (y , old_log_probs , advantages , returns)
+import time
 import jax
 import jax.numpy as jnp
 from flax import nnx
@@ -132,19 +133,26 @@ def train(graphdefs , state_policy , state_value , state_reward , state_referenc
     # Tracking losses
     policy_loss_history = []
     value_loss_history = []
+    train_start = time.time()
 
     for epoch in range(n_epochs):
         epoch_policy_losses = []
         epoch_value_losses = []
+        epoch_start = time.time()
 
         for batch_index , input_ids in enumerate(data):
             rng , rng_epoch = jax.random.split(rng)
+            batch_start = time.time()
 
             state_policy , state_value , state_opt_p , state_opt_v , policy_losses , value_losses = train_epoch(
                 graphdefs , state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng_epoch
             )
 
+            # Block before stopping clock
+            policy_losses.block_until_ready()
+
             # Mena losses
+            batch_time = time.time(0) - batch-start
             mean_p_loss = float(policy_losses.mean())
             mean_v_loss = float(value_losses.mean())
             epoch_policy_losses.append(mean_p_loss)
@@ -155,8 +163,12 @@ def train(graphdefs , state_policy , state_value , state_reward , state_referenc
                 f"batch [{batch_index+1}/{len(data)}] "
                 f"policy_loss: {mean_p_loss:.4f} "
                 f"value_loss: {mean_v_loss:.4f}"
+                f"time: {batch_time:.2f}s"
             )
+            if epoch == 0 and batch_index == 0:
+                print(f"  (first batch includes JIT compile time)")
 
+        epoch_time = time.time() - epoch_start
         epoch_mean_p = sum(epoch_policy_losses) / len(epoch_policy_losses)
         epoch_mean_v = sum(epoch_value_losses)  / len(epoch_value_losses)
         policy_loss_history.append(epoch_mean_p)
@@ -164,9 +176,13 @@ def train(graphdefs , state_policy , state_value , state_reward , state_referenc
 
         print(f"--- epoch {epoch+1} summary | "
             f"mean policy_loss: {epoch_mean_p:.4f} | "
-            f"mean value_loss: {epoch_mean_v:.4f} ---"
+            f"mean value_loss: {epoch_mean_v:.4f} | "
+            f"epoch_time: {epoch_time:.2f}s ---"
         )
         print()
+
+    total_time = time.time() - train_start
+    print(f"total training time: {total_time:.2f}s")
 
     return (state_policy , state_value , state_opt_p , state_opt_v , policy_loss_history , value_loss_history)
 
@@ -356,4 +372,25 @@ if __name__ == "__main__":
     assert max(opt_diffs) > 0 , "Adam moments never updated"
     print(f"max optimizer state diff: {max(opt_diffs):.6e}")
     print('PASS TEST 13')
-    print()
+    print('\n\n\n\n')
+
+
+    print('============================================================================================================')
+    print('.TRAIN() SMOKE TEST')
+    print('============================================================================================================')
+
+    # Dummy data
+    N_BATCHES = 3
+    rng , rng_data = jax.random.split(rng)
+    data = [
+        jax.random.randint(rng_data , (BATCH , PROMPT_LEN) , 1 , VOCAB_SIZE) for _ in range(N_BATCHES)
+    ]
+
+    state_policy , state_value , staet_opt_p , state_opt_v , policy_loss_history , value_loss_history = train(
+        graphdefs , state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , data , PROMPT_LEN , rng , n_epochs=3
+    )
+    assert len(policy_loss_history) == 3 , "Should have one entry per epoch"
+    assert len(value_loss_history)  == 3
+    print("policy loss history:" , [f"{x:.4f}" for x in policy_loss_history])
+    print("value loss history: " , [f"{x:.4f}" for x in value_loss_history])
+    print("PASS: train() smoke test")
