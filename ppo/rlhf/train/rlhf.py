@@ -106,13 +106,11 @@ def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_
     print("before leaf:" , before.shape , before.mean())
     print("corresponding grad:" , grad_leaves[0].shape , grad_leaves[0].mean())
     print('==============================================================================================================================')
-    graphdef_policy , graphdef_value , _ , _ , graphdef_opt_p , graphdef_opt_v = graphdefs
+    graphdef_policy , graphdef_value , _ , _ , opt_p , opt_v = graphdefs
 
     # Merging shit
-    optimizer_policy = nnx.merge(graphdef_opt_p , state_opt_p)
-    optimizer_value  = nnx.merge(graphdef_opt_v , state_opt_v)
-    policy = optimizer_policy.model
-    value  = optimizer_value.model
+    policy = nnx.merge(graphdef_policy , state_policy)
+    value  = nnx.merge(graphdef_value ,  state_value)
 
     # Loss functions
     def policy_loss(params):
@@ -124,21 +122,21 @@ def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_
 
     policy_loss_val , policy_grads = jax.value_and_grad(policy_loss)(nnx.state(policy))
     value_loss_val , value_grads = jax.value_and_grad(value_loss)(nnx.state(value))
-    optimizer_policy.update(policy_grads)
-    optimizer_value.update(value_grads)
+    p_updates , new_opt_p = opt_p.update(policy_grads , state_opt_p)
+    v_updates , new_opt_v = opt_v.update(value_grads , state_opt_v)
+    new_state_policy = optax.apply_updates(nnx.state(policy), p_updates)
+    new_state_value  = optax.apply_updates(nnx.state(value),  v_updates)
 
     print('==============================================================================================================================')
-    before_mean = jax.tree.leaves(state_policy)[0].mean()
-    after_mean  = jax.tree.leaves(nnx.state(policy))[0].mean()
-    print("before mean:" , before_mean)
-    print("after mean:" , after_mean)
+    print("before mean:" , jax.tree.leaves(state_policy)[0].mean())
+    print("after mean:" ,  jax.tree.leaves(new_state_policy)[0].mean())
     print("changed:" , not jnp.array_equal(
         jax.tree.leaves(state_policy)[0],
-        jax.tree.leaves(nnx.state(policy))[0]
+        jax.tree.leaves(new_state_policy)[0]
     ))
     print('==============================================================================================================================')
 
-    return (nnx.state(policy) , nnx.state(value) , nnx.state(optimizer_policy) , nnx.state(optimizer_value) , policy_loss_val , value_loss_val)
+    return (new_state_policy , new_state_value , new_opt_p , new_opt_v , policy_loss_val , value_loss_val)
 
 # NOTE: 1 rollout -> k epochs
 def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng):
@@ -182,20 +180,20 @@ if __name__ == "__main__":
     policy = PolicyModel(config , rngs=nnx.Rngs(0))
     value = ValueModel(config , rngs=nnx.Rngs(1))
     reward = RewardModel(config , rngs=nnx.Rngs(2))
-    optimizer_policy = nnx.ModelAndOptimizer(policy , optax.adam(1e-3) , wrt=nnx.Param)
-    optimizer_value = nnx.ModelAndOptimizer(value , optax.adam(1e-3) , wrt=nnx.Param)
+    opt_p = optax.adam(1e-3)
+    opt_v = optax.adam(1e-3)
+    state_opt_p = opt_p.init(nnx.state(policy))
+    state_opt_v = opt_v.init(nnx.state(value))
 
     # splits
     graphdef_policy , state_policy = nnx.split(policy)
     graphdef_value , state_value = nnx.split(value)
     graphdef_reward , state_reward = nnx.split(reward)
     graphdef_reference , state_reference = nnx.split(policy)
-    graphdef_opt_p , state_opt_p = nnx.split(optimizer_policy)
-    graphdef_opt_v , state_opt_v = nnx.split(optimizer_value)
 
     graphdefs = (
         graphdef_policy , graphdef_value , graphdef_reward , graphdef_reference ,
-        graphdef_opt_p , graphdef_opt_v
+        opt_p , opt_v
     )
     input_ids = jax.random.randint(rng , (BATCH,PROMPT_LEN) , 1 , VOCAB_SIZE)
 
