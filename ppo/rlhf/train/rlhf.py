@@ -99,6 +99,7 @@ def train_step(graphdefs , state_policy , state_value , state_opt_p , state_opt_
     return (new_state_policy , new_state_value , new_opt_p , new_opt_v , policy_loss_val , value_loss_val)
 
 # NOTE: 1 rollout -> k epochs
+@jax.jit
 def train_epoch(graphdefs ,state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , input_ids , prompt_len , rng):
 
     # Collect rollout
