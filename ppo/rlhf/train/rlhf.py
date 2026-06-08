@@ -13,6 +13,7 @@
 #    update policy and value weights
 #    probably inputs: (y , old_log_probs , advantages , returns)
 import time
+from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 from flax import nnx
