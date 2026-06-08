@@ -5,23 +5,29 @@ from einops import rearrange
 from dataclasses import dataclass
 import optax
 
+from ..models.transformer import TransformerConfig
+from ..models.reward_model import RewardModel
+
 #===============================================================================================
 # (input_ids_winner , input_ids_loser , mask_winner , mask_loser)
 def bradley_terry_loss(y_winner , y_loser):
     return -jnp.log(jax.nn.sigmoid(y_winner - y_loser)).mean()
 
 def train_step(state_model , state_optimizer , input_ids_winner , input_ids_loser , mask_winner , mask_loser):
+    # Merging graphs with states
     model = nnx.merge(graphdef_rm , state_model)
-    optimizer = nnx.merge(graphdef_rm_optimizer , state_optimizer)
 
     def loss_fn(params):
         rm = nnx.merge(graphdef_rm , params)
         score_winner , score_loser = rm(input_ids_winner , mask_winner) , rm(input_ids_loser , mask_loser)
         return bradley_terry_loss(score_winner , score_loser)
-    loss_val , grads = jax.value_and_grad(loss_fn)(nnx.state(model))
-    optimizer.update(model , grads)
+    
+    # Gather losses and grads , create updates
+    loss , grads = jax.value_and_grad(loss_fn)(nnx.state(model))
+    model_updates , new_state_optimizer = state_optimizer.update(grads , state_model)
+    new_state_model = optax.apply_updates(nnx.state(model) , model_updates)
 
-    return (nnx.state(model) , nnx.state(optimizer) , loss_val)
+    return (new_state_model , new_state_optimizer , loss)
 
 @jax.jit
 def train_epoch(state_model , state_optimizer , input_ids_winners , input_ids_losers , mask_winners , mask_losers):
@@ -53,7 +59,7 @@ if __name__ == "__main__":
 
     rng = jax.random.PRNGKey(42)
     rngs = nnx.Rngs(rng)
-    config = Config()
+    config = TransformerConfig()
 
     rng , rng_w , rng_l = jax.random.split(rng , 3)
 
@@ -64,11 +70,11 @@ if __name__ == "__main__":
     mask_winners = jnp.ones((N_BATCHES,BATCH_SIZE,SEQ_LEN))
     mask_losers = jnp.ones((N_BATCHES,BATCH_SIZE,SEQ_LEN))
 
-    reward_model = Transformer(config , rngs=rngs)
-    reward_optimizer = nnx.Optimizer(reward_model , optax.adam(1e-3) , wrt=nnx.Param)
+    reward_model = RewardModel(config , rngs=rngs)
+    reward_optimizer = optax.adam(1e-3)
+    state_rm_optimizer = reward_optimizer.init(nnx.state(reward_model))
 
     graphdef_rm , state_rm = nnx.split(reward_model)
-    graphdef_rm_optimizer , state_rm_optimizer = nnx.split(reward_optimizer)
 
     for epoch in range(10):
         t0 = time.time()

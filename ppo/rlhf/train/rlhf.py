@@ -386,7 +386,7 @@ if __name__ == "__main__":
         jax.random.randint(rng_data , (BATCH , PROMPT_LEN) , 1 , VOCAB_SIZE) for _ in range(N_BATCHES)
     ]
 
-    state_policy , state_value , staet_opt_p , state_opt_v , policy_loss_history , value_loss_history = train(
+    state_policy , state_value , state_opt_p , state_opt_v , policy_loss_history , value_loss_history = train(
         graphdefs , state_policy , state_value , state_reward , state_reference , state_opt_p , state_opt_v , data , PROMPT_LEN , rng , n_epochs=3
     )
     assert len(policy_loss_history) == 3 , "Should have one entry per epoch"
