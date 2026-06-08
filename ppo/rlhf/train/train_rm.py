@@ -1,3 +1,4 @@
+import time
 import jax
 import jax.numpy as jnp
 from flax import nnx
@@ -64,7 +65,7 @@ def train(graphdefs , state_model , state_optimizer , data_winners , data_losers
     for epoch in range(n_epochs):
         epoch_start = time.time()
 
-        state_model , state_optimizer , losses = train_epoch(
+        (state_model , state_optimizer) , losses = train_epoch(
             graphdefs , state_model , state_optimizer , 
             data_winners , data_losers , mask_winners , mask_losers
         )
@@ -88,30 +89,35 @@ def train(graphdefs , state_model , state_optimizer , data_winners , data_losers
     return state_model , state_optimizer , loss_history
 
 if __name__ == "__main__":
-    import time
-
     rng = jax.random.PRNGKey(42)
-    rngs = nnx.Rngs(rng)
     config = TransformerConfig()
 
     rng , rng_w , rng_l = jax.random.split(rng , 3)
 
-    # FAKE DATA
+    # Dummy data
     N_BATCHES , BATCH_SIZE , SEQ_LEN = 8 , 8 , 32
     input_ids_winners = jax.random.randint(rng_w , (N_BATCHES,BATCH_SIZE,SEQ_LEN) , 0 , config.VOCAB_SIZE)
     input_ids_losers = jax.random.randint(rng_l , (N_BATCHES,BATCH_SIZE,SEQ_LEN) , 0 , config.VOCAB_SIZE)
-    mask_winners = jnp.ones((N_BATCHES,BATCH_SIZE,SEQ_LEN))
-    mask_losers = jnp.ones((N_BATCHES,BATCH_SIZE,SEQ_LEN))
+    mask_winners = jnp.ones((N_BATCHES , BATCH_SIZE , SEQ_LEN))
+    mask_losers = jnp.ones((N_BATCHES , BATCH_SIZE , SEQ_LEN))
 
-    reward_model = RewardModel(config , rngs=rngs)
+    # Defining models (Reward & Optimizer)
+    reward_model = RewardModel(config , rngs=nnx.Rngs(0))
     graphdef_rm , state_rm = nnx.split(reward_model)
     optimizer_reward = optax.adam(1e-3)
     state_opt_rm = optimizer_reward.init(nnx.state(reward_model))
 
-    graphdefs = (graphdef_rm , optimizer_reward)
+    graphdefs = (graphdef_rm, optimizer_reward)
 
-    for epoch in range(10):
-        t0 = time.time()
-        final_carry , losses = train_epoch(graphdefs , state_rm , state_opt_rm , input_ids_winners , input_ids_losers , mask_winners , mask_losers)
-        print(f'Epoch {epoch}, Mean Loss: {losses.mean():.4f}, Time: {time.time()-t0:.3f}s')
-        state_rm , state_rm_optimizer = final_carry
+
+    # TESTS IN THE RLHF STYLE, TO BYPASS ANY POSSIBLE ERRORS
+    print("TRAIN() SMOKE TEST")
+    state_rm , state_opt_rm , loss_history = train(
+        graphdefs , state_rm , state_opt_rm ,
+        input_ids_winners , input_ids_losers ,
+        mask_winners , mask_losers ,
+        n_epochs=3 ,
+    )
+    assert len(loss_history) == 3 , "Should have one entry per epoch"
+    print("loss history:", [f"{x:.4f}" for x in loss_history])
+    print("PASS: train() smoke test")
