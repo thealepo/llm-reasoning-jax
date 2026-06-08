@@ -19,12 +19,12 @@ import jax.numpy as jnp
 from flax import nnx
 import optax
 
-from ..models.transformer import TransformerConfig
-from ..models.policy import PolicyModel
-from ..models.value_model import ValueModel
-from ..models.reward_model import RewardModel
-from ..utils.loss import policy_loss_fn , value_loss_fn , compute_KL_penalty
-from ..utils.gae import compute_gae
+from .models.transformer import TransformerConfig
+from .models.policy import PolicyModel
+from .models.value_model import ValueModel
+from .models.reward_model import RewardModel
+from .utils.loss import policy_loss_fn , value_loss_fn , compute_KL_penalty
+from .utils.gae import compute_gae
 
 BETA = 0.01
 MAX_NEW_TOKENS = 32
