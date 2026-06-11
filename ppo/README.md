@@ -1,0 +1,2 @@
+- [Actor-Critic and PPO Algorithms Explained](https://www.youtube.com/watch?v=nQDlbxMsf8Y&)
+- [PPO From Scratch](https://www.youtube.com/watch?v=bayeOpv4HEM&)
