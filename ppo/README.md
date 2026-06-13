@@ -1,2 +1,4 @@
 - [Actor-Critic and PPO Algorithms Explained](https://www.youtube.com/watch?v=nQDlbxMsf8Y&)
 - [PPO From Scratch](https://www.youtube.com/watch?v=bayeOpv4HEM&)
+- [Finetuning Language Models from Human Preferences (2019), Learning to Summarize from Human Feedback (2020), InstructGPT (2022)](<link>)
+- [RLHF PPO in JAX](<link>)
