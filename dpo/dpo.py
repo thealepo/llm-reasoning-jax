@@ -24,7 +24,7 @@ def dpo_loss(policy , reference , x , y_winner , y_loser , ):
         prompt_len = x.shape[1]
         completion_len = y.shape[1]
         mask = jnp.arange(token_log_probs.shape[1])
-        mask = (mask >- prompt_len-1) & (mask < prompt_len-1 + completion_len)
+        mask = (mask >= prompt_len-1) & (mask < prompt_len-1 + completion_len)
         return (token_log_probs * mask).sum(axis=-1)
 
 
