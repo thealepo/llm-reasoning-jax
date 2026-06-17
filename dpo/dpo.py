@@ -1,5 +1,8 @@
 # we sample two reponses given a prompt, from our reference SFT model
 # optimize policy model to minimize the DPO_LOSS, for the given reference model, dataset, and KL Beta.
+import jax
+import jax.numpy as jnp
+from flax import nnx
 
 def dpo_loss(x , policy , reference ,y_winner , y_loser , ):
     # per token log provs per model
