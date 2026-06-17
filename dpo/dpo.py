@@ -4,6 +4,8 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
+BETA = 0.95
+
 def dpo_loss(x , policy , reference ,y_winner , y_loser , ):
     # per token log provs per model
     def get_token_log_probs(model , y):
