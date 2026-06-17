@@ -1,6 +1,5 @@
 # we sample two reponses given a prompt, from our reference SFT model
 # optimize policy model to minimize the DPO_LOSS, for the given reference model, dataset, and KL Beta.
-from pprint import pp
 import jax
 import jax.numpy as jnp
 from flax import nnx
