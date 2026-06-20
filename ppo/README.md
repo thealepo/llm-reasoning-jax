@@ -11,5 +11,7 @@ Actor-Critic implemented a two-model architecture, with a Policy model playing t
 
 However, there are some issues that arise from this. Namely, 
 
+Introduce: PPO. PPO circumvents these problems in multiple ways, highlighted by the structure of the algorithm. Primarily, the implementation of a clipped surrogate allows their to be a limit in how much a policy gradient can update in a step. Additionally, PPO functions different,y from other policy gradient methods: we perform a rollout, in which we collect data from a smaller subset of the episode. Let's say, steps 1-128 of our full episode. And from there, we perform several updates to the policy.
+
 # next, speak on the issues of A2C and TRPO
 # explain PPO and the algorithm
