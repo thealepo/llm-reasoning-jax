@@ -15,3 +15,5 @@ Introduce: PPO. PPO circumvents these problems in multiple ways, highlighted by 
 
 # next, speak on the issues of A2C and TRPO
 # explain PPO and the algorithm
+
+<img width="5424" height="5746" alt="Image" src="https://github.com/user-attachments/assets/b6c04537-358d-4e93-98cc-fe2ab20b98d3" />
