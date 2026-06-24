@@ -7,14 +7,24 @@ import jax.numpy as jnp
 from flax import nnx
 from dpo import dpo_loss
 
+@nnx.jit
 def train_step(policy , reference , optimizer , batch):
     x , y_winner , y_loser = batch
 
     def loss_fn(x , policy , reference , y_winner , y_loser):
         return dpo_loss(x , policy , reference , y_winner , y_loser)
-    grad_fn = nnx.value_and_grad(loss_fn)
+    grad_fn = nnx.value_and_grad(loss_fn)(policy)
     
     loss , grads = grad_fn(x , policy , reference , y_winner , y_loser)
     optimizer.update(policy , grads)
     return loss
+
+def train_epoch(policy , reference , optimizer , data):
+    losses = []
+
+    for batch in data:
+        loss = train_step(policy , reference , optimizer , batch)
+        losses.append(loss)
+
+    return losses
 
