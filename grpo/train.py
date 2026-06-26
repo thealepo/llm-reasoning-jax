@@ -18,6 +18,7 @@
 import jax
 import jax.numpy as jnp
 from flax import nnx
+from ppo.rlhf.rlhf import graphdef_policy
 
 BETA = 0.01
 MAX_NEW_TOKENS = 32
@@ -25,18 +26,24 @@ MU = 4  # ppo_epochs equivalency
 G = 8
 
 def generate_group(graphdefs , state_policy , input_ids , prompt_len , rng):
-    # Unpacking
-    graphdef_policy = graphdefs[0]
-    B = input_ids.shape[0]  # batch , prompt_len
-
-    # RNG Stuff
-    rng_keys = jax.random.split(rng , B*G).reshape(B , G , 2)
-
-    #
-
-    # Merging
-    policy = nnx.merge(graphdef_policy , state_policy)
-
     # Generate g ys from the policy, given the input_ids.
     # return should be [batch , g , prompt_len+max_new_tokens]
-    
+    graphdef_policy = graphdefs[0]
+
+    def gen_one(rng , _):
+        rng , rng_gen = jax.random.split(rng)
+        policy = nnx.merge(graphdef_policy , state_policy)
+        output = policy.generate(input_ids , rng=rng_gen , max_new_tokens=MAX_NEW_TOKENS)
+        return rng , output  # output.shape is [batch , total_len]
+
+    _ , outputs = jax.lax.scan(gen_one , rng , None , length=G)  # [G , batch , total_len]
+    outputs = rearrange(outputs , 'g b t -> b g t') # [batch , G , total_len]
+    responses = outputs[: , : , prompt_len:]
+    return outputs , responses
+
+def compute_advantages(rewards):
+    # rewards.shape == [B , G]
+    mean = rewards.mean(axis=1 , keepdims=True)
+    std = rewards.std(axis=1 , keepdims=True) + 1e-8
+    return (rewards - mean) / std  # [batch , G]
+
