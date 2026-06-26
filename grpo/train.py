@@ -69,3 +69,16 @@ def grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages , epsilo
     kl = jnp.mean(log_probs_rl - log_probs_sft)
 
     return policy_loss + BETA * kl
+
+def train_step(graphdefs , state_policy , state_optimizer , outputs , old_log_probs , log_probs_sft , advantages , prompt_len):
+    graphdef_policy , optimizer = graphdefs
+
+    def loss_fn(params):
+        log_probs_rl = compute_log_probs(graphdef_policy , params , outputs , prompt_len)
+        return grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages)
+
+    loss_val , grads = jax.value_and_grad(loss_fn)(state_policy)
+    updates , new_optimizer_state = optimizer.update(grads , state_optimizer)
+    new_policy_state = optax.apply_updates(state_policy , updates)
+
+    return new_policy_state , new_optimizer_state , loss_val
