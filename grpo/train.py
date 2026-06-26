@@ -15,6 +15,7 @@
 # compute rewards per
 
 # has a vmap taste to it.
+from dpo.policy import prompt
 import jax
 import jax.numpy as jnp
 from flax import nnx
@@ -48,3 +49,12 @@ def compute_advantages(rewards):
     std = rewards.std(axis=1 , keepdims=True) + 1e-8
     return (rewards - mean) / std  # [batch , G]
 
+def compute_log_probs(graphdefs , state_policy , outputs , prompt_len):
+    # outputs are [batch , G , total_len]
+    graphdef_policy = graphdefs[0]
+    policy = nnx.merge(graphdef_policy , state_policy)
+
+    flattened = rearrange(outputs , 'b g t -> (b g) t')
+    log_probs = policy.log_probs_of(flattened)
+    log_probs = rearrange(log_probs , '(b g) t -> b g t' , g=G)
+    return log_probs[: , : , prompt_len:]  # [batch , G , response_ken]
