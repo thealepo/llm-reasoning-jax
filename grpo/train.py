@@ -58,3 +58,14 @@ def compute_log_probs(graphdefs , state_policy , outputs , prompt_len):
     log_probs = policy.log_probs_of(flattened)
     log_probs = rearrange(log_probs , '(b g) t -> b g t' , g=G)
     return log_probs[: , : , prompt_len:]  # [batch , G , response_ken]
+
+def grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages , epsilon=0.2):
+    ratio = jnp.exp(log_probs_rl - old_log_probs)  # [batch , G , response len]
+    At = rearrange(advantages , 'b g -> b g 1')
+
+    clipped = jnp.clip(ratio , 1-epsilon , 1+epsilon)
+
+    policy_loss = -jnp.mean(jnp.minimum(ratio * At , clipped * At))
+    kl = jnp.mean(log_probs_rl - log_probs_sft)
+
+    return policy_loss + BETA * kl
