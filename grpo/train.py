@@ -19,6 +19,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 from ppo.rlhf.rlhf import graphdef_policy
+from einops import rearrange
 
 BETA = 0.01
 MAX_NEW_TOKENS = 32
