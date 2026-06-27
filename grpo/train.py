@@ -19,6 +19,9 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 from einops import rearrange
+from ppo.rlhf.rlhf import advantages
+from ppo.rlhf.utils.loss import old_log_probs
+from star.model import generate
 
 BETA = 0.01
 MAX_NEW_TOKENS = 32
@@ -73,20 +76,30 @@ def train_step(policy , optimizer , outputs , old_log_probs , log_probs_sft , ad
     return loss_val
 
 # generate group -> collect rewards -> calculate advantages -> loss
-def train_batch(graphdefs , state_policy , state_optimizer , reward_model , input_ids , prompt_len , rng):
+def train_batch(policy , reward , reference , optimizer , input_ids , prompt_len , rng):
+    # Splitting keys
+    rng , rng_gen = jax.random.split(rng)
 
-    rng , rng_generate_group = jax.random.split(rng)
-    full_generations , responses = generate_group(graphdefs , state_policy , input_ids , prompt_len , rng_generate_group)
-    old_log_probs = compute_log_probs(graphdefs , state_policy , full_generations , prompt_len)
+    # Generating G completions
+    full_generations , responses = generate_group(policy , input_ids , prompt_len , rng_gen)  # [batch , G , total_len] | [batch , G , total_len - prompt_len]
 
+    # Computing log probs
+    old_log_probs = compute_log_probs(policy , full_generations , prompt_len) # NOTE: FIND A BETTER NAME FOR TS
+    log_probs_sft = compute_log_probs(reference , full_generations , prompt_len)
+    # both are [Batch , G , response_len]
+
+    # Rewards from the RM
+    flat_responses = rearrange(responses , 'b g t -> (b g) t')
+    flat_rewards = reward(flat_responses)
+    rewards = rearrange(flat_rewards , '(b g) -> b g' , g=G)
     advantages = compute_advantages(rewards)
 
-    # A step of GRPO
-    def body_fn(carry , _):
+    # splits
+    graphdef_policy , state_policy = nnx.split(policy)
+    state_optimizer = optimizer.init(state_policy)
+
+    # MU rewards
+    def scan_fn(carry , _):
         state_policy , state_optimizer = carry
-        new_state_policy , new_state_optimizer , loss = train_step(
-            graphdefs , state_policy , state_optimizer , responses , old_log_probs , ... , advantages , prompt_len
-        )
 
-        return (new_state_policy , new_state_optimizer) , loss
-
+        
