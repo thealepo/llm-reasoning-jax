@@ -19,9 +19,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 from einops import rearrange
-from ppo.rlhf.rlhf import advantages
-from ppo.rlhf.utils.loss import old_log_probs
-from star.model import generate
+import optax
 
 BETA = 0.01
 MAX_NEW_TOKENS = 32
@@ -93,10 +91,6 @@ def train_batch(policy , reward , reference , optimizer , input_ids , prompt_len
     flat_rewards = reward(flat_responses)
     rewards = rearrange(flat_rewards , '(b g) -> b g' , g=G)
     advantages = compute_advantages(rewards)
-
-    # splits
-    graphdef_policy , state_policy = nnx.split(policy)
-    state_optimizer = optimizer.init(state_policy)
 
     # MU rewards
     # NOTE: i wonder if there is any way I can make this whole function JIT-able. This is the bottleneck but not sure.
