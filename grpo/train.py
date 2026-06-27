@@ -23,7 +23,7 @@ from einops import rearrange
 import optax
 
 BETA = 0.01
-MAX_NEW_TOKENS = 32
+MAX_NEW_TOKENS = 8
 MU = 4  # ppo_epochs equivalency
 G = 8
 
