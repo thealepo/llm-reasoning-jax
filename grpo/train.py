@@ -99,7 +99,10 @@ def train_batch(policy , reward , reference , optimizer , input_ids , prompt_len
     state_optimizer = optimizer.init(state_policy)
 
     # MU rewards
-    def scan_fn(carry , _):
-        state_policy , state_optimizer = carry
+    # NOTE: i wonder if there is any way I can make this whole function JIT-able. This is the bottleneck but not sure.
+    losses = []
+    for _ in range(MU):
+        loss = train_step(policy , optimizer , full_generations , old_log_probs , log_probs_sft , advantages , prompt_len)
+        losses.append(loss)
 
-        
+    return losses
