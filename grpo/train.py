@@ -63,7 +63,7 @@ def grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages , epsilo
 
     return policy_loss + BETA * kl
 
-@nnx.jit
+@nnx.jit(static_argnames=('prompt_len',))
 def train_step(policy , optimizer , outputs , old_log_probs , log_probs_sft , advantages , prompt_len):
     # Computing loss function
     def loss_fn(policy):
