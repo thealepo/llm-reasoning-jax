@@ -15,27 +15,20 @@
 # compute rewards per
 
 # has a vmap taste to it.
-from dpo.policy import prompt
 import jax
-import jax.numpy as jnp
+import jax.numpy
 from flax import nnx
-from ppo.rlhf.rlhf import graphdef_policy
 from einops import rearrange
-import optax
 
 BETA = 0.01
 MAX_NEW_TOKENS = 32
 MU = 4  # ppo_epochs equivalency
 G = 8
 
-def generate_group(graphdefs , state_policy , input_ids , prompt_len , rng):
-    # Generate g ys from the policy, given the input_ids.
-    # return should be [batch , g , prompt_len+max_new_tokens]
-    graphdef_policy = graphdefs[0]
-
+def generate_group(policy , input_ids , prompt_len , rng):
+    # ONE generation
     def gen_one(rng , _):
         rng , rng_gen = jax.random.split(rng)
-        policy = nnx.merge(graphdef_policy , state_policy)
         output = policy.generate(input_ids , rng=rng_gen , max_new_tokens=MAX_NEW_TOKENS)
         return rng , output  # output.shape is [batch , total_len]
 
@@ -50,11 +43,8 @@ def compute_advantages(rewards):
     std = rewards.std(axis=1 , keepdims=True) + 1e-8
     return (rewards - mean) / std  # [batch , G]
 
-def compute_log_probs(graphdefs , state_policy , outputs , prompt_len):
+def compute_log_probs(policy , outputs , prompt_len):
     # outputs are [batch , G , total_len]
-    graphdef_policy = graphdefs[0]
-    policy = nnx.merge(graphdef_policy , state_policy)
-
     flattened = rearrange(outputs , 'b g t -> (b g) t')
     log_probs = policy.log_probs_of(flattened)
     log_probs = rearrange(log_probs , '(b g) t -> b g t' , g=G)
@@ -71,18 +61,16 @@ def grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages , epsilo
 
     return policy_loss + BETA * kl
 
-def train_step(graphdefs , state_policy , state_optimizer , outputs , old_log_probs , log_probs_sft , advantages , prompt_len):
-    graphdef_policy , optimizer = graphdefs
-
-    def loss_fn(params):
-        log_probs_rl = compute_log_probs(graphdef_policy , params , outputs , prompt_len)
+@nnx.jit
+def train_step(policy , optimizer , outputs , old_log_probs , log_probs_sft , advantages , prompt_len):
+    # Computing loss function
+    def loss_fn(policy):
+        log_probs_rl = compute_log_probs(policy , outputs , prompt_len)
         return grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages)
 
-    loss_val , grads = jax.value_and_grad(loss_fn)(state_policy)
-    updates , new_optimizer_state = optimizer.update(grads , state_optimizer)
-    new_policy_state = optax.apply_updates(state_policy , updates)
-
-    return new_policy_state , new_optimizer_state , loss_val
+    loss_val , grads = nnx.value_and_grad(loss_fn)(policy)
+    optimizer.update(policy , grads)
+    return loss_val
 
 # generate group -> collect rewards -> calculate advantages -> loss
 def train_batch(graphdefs , state_policy , state_optimizer , reward_model , input_ids , prompt_len , rng):
