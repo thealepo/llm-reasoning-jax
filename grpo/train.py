@@ -16,7 +16,7 @@
 
 # has a vmap taste to it.
 import jax
-import jax.numpy
+import jax.numpy as jnp
 from flax import nnx
 from einops import rearrange
 
