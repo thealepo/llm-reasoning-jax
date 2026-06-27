@@ -15,6 +15,7 @@
 # compute rewards per
 
 # has a vmap taste to it.
+from grpo.reward import RewardModel
 import jax
 import jax.numpy as jnp
 from flax import nnx
@@ -88,7 +89,8 @@ def train_batch(policy , reward , reference , optimizer , input_ids , prompt_len
 
     # Rewards from the RM
     flat_responses = rearrange(responses , 'b g t -> (b g) t')
-    flat_rewards = reward(flat_responses)
+    flat_mask = jnp.ones_like(flat_responses)
+    flat_rewards = reward(flat_responses , flat_mask)
     rewards = rearrange(flat_rewards , '(b g) -> b g' , g=G)
     advantages = compute_advantages(rewards)
 
@@ -100,3 +102,37 @@ def train_batch(policy , reward , reference , optimizer , input_ids , prompt_len
         losses.append(loss)
 
     return losses
+
+if __name__ == "__main__":
+    from grpo.policy import PolicyModel
+    from grpo.reward import RewardModel
+    from grpo.transformer import TransformerConfig
+
+    # RNG
+    rng = jax.random.PRNGKey(42)
+    config = TransformerConfig()
+
+    # hyo
+    BATCH , PROMPT_LEN = 2 , 8
+
+    # Model sand Optimizer
+    policy = PolicyModel(config , rngs=nnx.Rngs(0))
+    reference = PolicyModel(config , rngs=nnx.Rngs(0))
+    reward = RewardModel(config , rngs=nnx.Rngs(1))
+    optimizer = nnx.Optimizer(policy , optax.adam(1e-3) , wrt=nnx.Param)
+
+    # Dummy data
+    rng , rng_data = jax.random.split(rng)
+    batches = [
+        jax.random.randint(rng_data , (BATCH,PROMPT_LEN) , 1 , config.VOCAB_SIZE) for _ in range(5)
+    ]
+
+    for i , input_ids in enumerate(batches):
+        rng , rng_batch = jax.random.split(rng)
+        losses = train_batch(policy , reward , reference , optimizer , input_ids , PROMPT_LEN , rng_batch)
+        mean_loss = sum(losses) / len(losses)
+
+        loss_strs = [f'{float(l):.4f}' for l in losses]
+        print(f'batch {i+1} | mean loss: {mean_loss:.4f} | losses: {loss_strs}')
+
+    print('YAY')
