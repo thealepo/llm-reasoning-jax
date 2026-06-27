@@ -83,3 +83,22 @@ def train_step(graphdefs , state_policy , state_optimizer , outputs , old_log_pr
     new_policy_state = optax.apply_updates(state_policy , updates)
 
     return new_policy_state , new_optimizer_state , loss_val
+
+# generate group -> collect rewards -> calculate advantages -> loss
+def train_epoch(graphdefs , state_policy , state_optimizer , reward_model , input_ids , prompt_len , rng):
+
+    rng , rng_generate_group = jax.random.split(rng)
+    full_generations , responses = generate_group(graphdefs , state_policy , input_ids , prompt_len , rng_generate_group)
+    old_log_probs = compute_log_probs(graphdefs , state_policy , full_generations , prompt_len)
+
+    advantages = compute_advantages(rewards)
+
+    # A step of GRPO
+    def body_fn(carry , _):
+        state_policy , state_optimizer = carry
+        new_state_policy , new_state_optimizer , loss = train_step(
+            graphdefs , state_policy , state_optimizer , responses , old_log_probs , ... , advantages , prompt_len
+        )
+
+        return (new_state_policy , new_state_optimizer) , loss
+
