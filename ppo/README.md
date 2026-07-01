@@ -39,4 +39,4 @@ The following links are to the focused YouTube videos that go into the concepts 
 - [Actor-Critic and PPO Algorithms Explained](https://www.youtube.com/watch?v=nQDlbxMsf8Y&)
 - [Let's Build PPO From Scratch! Using JAX & Flax NNX](https://www.youtube.com/watch?v=bayeOpv4HEM&)
 - [Before ChatGPT: Understanding the Core Papers of RLHF [Finetuning Language Models from Human Preferences (2019), Learning to Summarize from Human Feedback (2020), InstructGPT (2022)]](https://www.youtube.com/watch?v=Q0Of_6xJ0FQ&)
-- [RLHF PPO in JAX](<link>)
+- [Engineering an RLHF Pipeline: End-to-End Implementation in JAX](https://youtu.be/iglZzhK1wrQ)
