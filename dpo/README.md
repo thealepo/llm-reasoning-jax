@@ -2,7 +2,7 @@
 
 Direct Preference Optimization (DPO) reparameterizes the reward function from PPO, into a clean classification loss. Essentially, your own Policy *becomes* the reward model itself.
 
-This collapsed loss is: `L_DPO(π_θ; π_ref) = -E_(x,y_w,y_l)~D [ log σ( β log(π_θ(y_w|x)/π_ref(y_w|x)) − β log(π_θ(y_l|x)/π_ref(y_l|x)) ) ]`
+This collapsed loss is: $L_DPO(π_θ; π_ref) = -E_(x,y_w,y_l)~D [ log σ( β log(π_θ(y_w|x)/π_ref(y_w|x)) − β log(π_θ(y_l|x)/π_ref(y_l|x)) ) ]$
 
 ---
 
