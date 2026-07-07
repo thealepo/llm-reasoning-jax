@@ -1,4 +1,8 @@
-# Direct Policy Optimization
+# Direct Preference Optimization
+
+Direct Preference Optimization (DPO) reparameterizes the reward function from PPO, into a clean classification loss. Essentially, your own Policy *becomes* the reward model itself.
+
+<img width="1280" height="720" alt="Image" src="https://github.com/user-attachments/assets/dc44f279-ba10-40ea-88d5-a49ac1cb7123" />
 
 ---
 
