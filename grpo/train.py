@@ -57,11 +57,13 @@ def grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages , epsilo
     At = rearrange(advantages , 'b g -> b g 1')
 
     clipped = jnp.clip(ratio , 1-epsilon , 1+epsilon)
+    loss_logits = jnp.minimum(ratio * At , clipped * At)
 
-    policy_loss = -jnp.mean(jnp.minimum(ratio * At , clipped * At))
-    kl = jnp.mean(log_probs_rl - log_probs_sft)
+    # KL penalty (GRPO)
+    kl = jnp.exp(log_probs_sft - log_probs_rl) - (log_probs_sft - log_probs_rl) - 1.0
+    loss = -(loss_logits - BETA * kl)
 
-    return policy_loss + BETA * kl
+    return loss
 
 @nnx.jit(static_argnames=('prompt_len',))
 def train_step(policy , optimizer , outputs , old_log_probs , log_probs_sft , advantages , prompt_len):
