@@ -2,7 +2,7 @@
 
 This is a Flax NNX implementation of Reinforcement Learning from Human Feedback (RLHF). This serves as a good learning resource to understanding the fundamentals of post-training, using PPO.
 
-<img width="5424" height="5746" alt="Image" src="https://github.com/user-attachments/assets/a577f07c-7da4-4426-856d-ee3b5ff3a6a8" />
+<img width="5424" height="5746" alt="Image" src="https://github.com/user-attachments/assets/c9153ae8-35fd-4aed-a661-bd57f775425c" />
 
 ---
 
