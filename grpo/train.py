@@ -63,7 +63,7 @@ def grpo_loss(log_probs_rl , old_log_probs , log_probs_sft , advantages , epsilo
     kl = jnp.exp(log_probs_sft - log_probs_rl) - (log_probs_sft - log_probs_rl) - 1.0
     loss = -(surrogate - BETA * kl)
 
-    return loss
+    return loss.mean()
 
 @nnx.jit(static_argnames=('prompt_len',))
 def train_step(policy , optimizer , outputs , old_log_probs , log_probs_sft , advantages , prompt_len):
