@@ -1,6 +1,6 @@
 # Group-Relative Policy Optimization
 
-<img width="5403" height="5102" alt="Image" src="https://github.com/user-attachments/assets/c0cfd448-ab8f-4519-bcec-5dab124cd7a0" />
+<img width="5403" height="5401" alt="Image" src="https://github.com/user-attachments/assets/6b50c91f-ff7c-4b8d-bd43-2103f5d5d82a" />
 
 Group-Relative Policy Optimization (GRPO) removes the value model from PPO entirely. So instead of learning a critic to estimate the advantage, GRPO samples a *group* of `G` completions per prompt and computes the advantage of each one relative to the group by normalizing each completion's reward against the group's mean and standard deviation.
 
