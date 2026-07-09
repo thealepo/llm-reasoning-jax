@@ -1,5 +1,7 @@
 # LLM Post-Training in JAX
 
+<img width="3840" height="2160" alt="Image" src="https://github.com/user-attachments/assets/a7a1942c-236e-443d-bdb9-195f1ee070d9" />
+
 Implementations of the core RL and preference-tuning algorithms behind LLM post-training, written from scratch in JAX (Flax NNX). Built alongside **Road to Reasoning**, a YouTube series walking through the math and the code for each one.
 
 **[Watch the full playlist](https://youtube.com/playlist?list=PLCt2HxhgKZKyTjHLPPujPt4deV5vdQFno&si=b4Qo_4gLy96kYfSc)**
