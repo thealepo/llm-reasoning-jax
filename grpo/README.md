@@ -1,4 +1,4 @@
-# Group-Relative Policy Optimization
+# Group Relative Policy Optimization
 
 <img width="5403" height="5401" alt="Image" src="https://github.com/user-attachments/assets/6b50c91f-ff7c-4b8d-bd43-2103f5d5d82a" />
 
