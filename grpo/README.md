@@ -23,4 +23,4 @@ Because the baseline comes from the group itself rather than a learned value fun
 The following links are to the focused YouTube videos that go into the concept, math, and JAX implementation:
 
 - [DeepSeekMath: The Paper Behind GRPO](https://youtu.be/yBbmxXNoNUI?si=zoNwv_1otzfqlKan)
-- [Let's Build GRPO From Scratch! (WIP)]()
+- [Build GRPO From Scratch!](https://youtu.be/cMgdk8R9MFc)
