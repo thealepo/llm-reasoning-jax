@@ -29,7 +29,7 @@ def critic_loss_fn(critic , obs , target):
     return (critic(obs) - jax.lax.stop_gradient(target)) ** 2
 
 # Training
-def train(rngs):
+def train(rng):
     # Initializing models and optimizers
     actor = ActorModel(OBSERVATION_SIZE , HIDDEN , ACTION_SIZE , rngs=nnx.Rngs(0))
     critic = CriticModel(OBSERVATION_SIZE , HIDDEN , rngs=nnx.Rngs(1))

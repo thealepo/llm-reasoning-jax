@@ -38,6 +38,8 @@ def train_step(model , optimizer , states , actions , returns):
     grads = nnx.grad(loss_fn)(model , states , actions , returns)
     optimizer.update(model , grads)
 
+recent_rewards = []
+
 for episode in range(NUM_EPISODES):
     # Generate one episode
     episode_data = []
@@ -72,3 +74,9 @@ for episode in range(NUM_EPISODES):
 
     # Update weights of Policy model
     train_step(model , optimizer , states , actions , returns)
+
+    recent_rewards.append(len(episode_data))
+    if (episode + 1) % 50 == 0:
+        mean_reward = sum(recent_rewards) / len(recent_rewards)
+        print(f'episode {episode+1:4d}/{NUM_EPISODES} | mean reward (last {len(recent_rewards)}): {mean_reward:6.1f}')
+        recent_rewards = []

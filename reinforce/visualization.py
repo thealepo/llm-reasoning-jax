@@ -1,9 +1,10 @@
+import jax
+import jax.numpy as jnp
+import gymnasium as gym
 import imageio
-import matplotlib.pyplot as pyplot
-import numpy as numpy
 
 def record_episode(model , key , path='cartpole.gif'):
-    env = gym.make('CartPole-v1')
+    env = gym.make('CartPole-v1' , render_mode='rgb_array')
     state , _ = env.reset()
     frames = []
     done = False

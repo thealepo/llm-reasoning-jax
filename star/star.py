@@ -2,9 +2,8 @@ from data import load_gsm8k , normalize_answer , parse_answer_string
 from model import load_model , make_sampler , generate
 from prompts import standard_prompt , rationalization_prompt
 from finetune import finetune
-from eval import evaluate
 
-def main(model , tokenizer , params , test_dataset , num_iterations=3 , max_new_tokens=256 , use_rationalization=True , workdir='./star_output'):
+def main(model , tokenizer , params , num_iterations=3 , max_new_tokens=256 , use_rationalization=True , workdir='./star_output'):
     train_dataset = load_gsm8k('train')
 
     sampler = make_sampler(model , params , tokenizer)
@@ -39,4 +38,4 @@ def main(model , tokenizer , params , test_dataset , num_iterations=3 , max_new_
         params = finetune(model , params , examples , tokenizer , workdir=f'{workdir}/iter_{i}')
         sampler = make_sampler(model , params , tokenizer)
 
-    return evaluate(model , params , tokenizer , test_dataset)
+    return params

@@ -6,6 +6,14 @@ Implementations of the core RL and preference-tuning algorithms behind LLM post-
 
 **[Watch the full playlist](https://youtube.com/playlist?list=PLCt2HxhgKZKyTjHLPPujPt4deV5vdQFno&si=b4Qo_4gLy96kYfSc)**
 
+## Setup
+
+```bash
+git clone https://github.com/thealepo/llm-reasoning-jax
+cd llm-reasoning-jax
+pip install -r requirements.txt
+```
+
 ## Algorithms
 
 | Algorithm | Description | Videos |
