@@ -9,9 +9,14 @@ def policy_loss_fn(actor , response , old_log_probs , advantages , mask):
     logits = actor(response) #(batch , seq_len , vocab_size)
     log_probs = jax.nn.log_softmax(logits , axis=-1) # (bathc , seq_len , vocab_size)
 
+    # logits at position t predict token t+1, so token t is scored against position t-1
     token_log_probs = jnp.take_along_axis(
-        log_probs , response[... , jnp.newaxis] , axis=2
-    ).squeeze(-1) # (batch , seq_len)
+        log_probs[: , :-1 , :] , response[: , 1: , jnp.newaxis] , axis=2
+    ).squeeze(-1) # (batch , seq_len - 1)
+
+    # token 0 has no context, pad it to keep the output (batch , seq_len)
+    pad = jnp.zeros((token_log_probs.shape[0] , 1) , dtype=token_log_probs.dtype)
+    token_log_probs = jnp.concatenate([pad , token_log_probs] , axis=1) # (batch , seq_len)
 
     ratio = jnp.exp(token_log_probs - jax.lax.stop_gradient(old_log_probs))
 

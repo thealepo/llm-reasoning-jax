@@ -19,11 +19,14 @@ class PolicyModel(nnx.Module):
         logits = self.linear_head(hidden_state)  # [batch , seq_len , vocab_size]
         log_probs = jax.nn.log_softmax(logits , axis=-1)  # [batch , seq_len , vocab_size]
 
+        # logits at position t predict token t+1, so token t is scored against position t-1
         token_log_probs = jnp.take_along_axis(
-            log_probs , input_ids[... , jnp.newaxis] , axis=-1
-        ).squeeze(-1)  # [batch , seq_len]
+            log_probs[: , :-1 , :] , input_ids[: , 1: , jnp.newaxis] , axis=-1
+        ).squeeze(-1)  # [batch , seq_len - 1]
 
-        return token_log_probs
+        # token 0 has no context, pad it to keep the output [batch , seq_len]
+        pad = jnp.zeros((token_log_probs.shape[0] , 1) , dtype=token_log_probs.dtype)
+        return jnp.concatenate([pad , token_log_probs] , axis=1)  # [batch , seq_len]
 
     # NOTE: I have looked through a lot of JAX resources and a lot of LLM help
     # But unsure how else to deal with this.Shapes must be static.
